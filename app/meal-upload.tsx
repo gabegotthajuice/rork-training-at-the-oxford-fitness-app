@@ -38,6 +38,14 @@ export default function MealUploadScreen() {
   
   const logMealMutation = trpc.oxford.logMeal.useMutation();
   
+  const getMealTag = (): "B" | "L" | "D" | "S" => {
+    const hour = new Date().getHours();
+    if (hour < 10) return "B"; // Breakfast
+    if (hour < 15) return "L"; // Lunch
+    if (hour < 20) return "D"; // Dinner
+    return "S"; // Snack
+  };
+  
   React.useEffect(() => {
     loadClientId();
   }, []);
@@ -192,22 +200,12 @@ export default function MealUploadScreen() {
       // Also log to Oxford system if client ID is available
       if (clientId) {
         try {
-          // Create FormData for the Oxford meal logging
-          const formData = new FormData();
-          formData.append('client_id', clientId);
-          formData.append('date', new Date().toISOString().split('T')[0]);
-          formData.append('meal_tag', getMealTag());
-          formData.append('notes', analysisData.analysis || '');
-          
-          // Convert image to blob for upload
-          if (selectedImage && base64Image) {
-            const response = await fetch(selectedImage);
-            const blob = await response.blob();
-            formData.append('photo', blob, 'meal.jpg');
-          }
-          
           await logMealMutation.mutateAsync({
-            formData: formData as any
+            client_id: clientId,
+            date: new Date().toISOString().split('T')[0],
+            meal_tag: getMealTag(),
+            notes: analysisData.analysis || '',
+            photo_base64: base64Image
           });
           
           console.log('Meal logged to Oxford system successfully');
@@ -238,7 +236,7 @@ export default function MealUploadScreen() {
           headerStyle: { backgroundColor: '#001F3F' },
           headerTintColor: '#FFD700',
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
               <ArrowLeft size={24} color="#FFD700" />
             </TouchableOpacity>
           ),
@@ -691,5 +689,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFD700',
+  },
+  headerButton: {
+    marginLeft: 10,
   },
 });
