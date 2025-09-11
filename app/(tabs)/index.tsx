@@ -42,6 +42,7 @@ import { useClient } from '@/providers/ClientProvider';
 import { router } from 'expo-router';
 import { useAppMode } from '@/providers/AppModeProvider';
 import Svg, { Path, Line, Circle, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop, Polygon } from 'react-native-svg';
+import { trpc } from '@/lib/trpc';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -53,6 +54,9 @@ export default function DashboardScreen() {
   const [scaleConnected, setScaleConnected] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  // Test tRPC connection
+  const hiMutation = trpc.example.hi.useMutation();
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -886,6 +890,43 @@ export default function DashboardScreen() {
               <Text style={styles.statLabel}>SESSIONS</Text>
             </LinearGradient>
           </View>
+        </View>
+
+        {/* Backend Test Card */}
+        <View style={styles.sessionCard}>
+          <LinearGradient
+            colors={['rgba(0,255,0,0.1)', 'rgba(0,0,0,0.95)', 'rgba(0,255,0,0.1)']}
+            style={styles.sessionGradient}
+          >
+            <View style={styles.sessionHeader}>
+              <View style={[styles.sessionIndicator, { backgroundColor: '#00FF00' }]} />
+              <Text style={[styles.sessionTitle, { color: '#00FF00' }]}>BACKEND STATUS</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.testButton}
+              onPress={() => hiMutation.mutate({ name: 'Athlete' })}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#00FF00', '#00AA00']}
+                style={styles.testButtonGradient}
+              >
+                <Text style={styles.testButtonText}>TEST CONNECTION</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            {hiMutation.data && (
+              <View style={styles.testResult}>
+                <Text style={styles.testResultText}>
+                  {hiMutation.data.hello} - {new Date(hiMutation.data.date).toLocaleTimeString()}
+                </Text>
+              </View>
+            )}
+            {hiMutation.error && (
+              <View style={styles.testError}>
+                <Text style={styles.testErrorText}>Connection failed</Text>
+              </View>
+            )}
+          </LinearGradient>
         </View>
 
         {/* Next Protocol Card */}
@@ -1738,5 +1779,46 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 0.5,
+  },
+  testButton: {
+    height: 40,
+    borderRadius: 0,
+    overflow: 'hidden',
+    marginVertical: 10,
+  },
+  testButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  testButtonText: {
+    fontSize: 11,
+    color: '#000',
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  testResult: {
+    padding: 10,
+    backgroundColor: 'rgba(0,255,0,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,0,0.3)',
+  },
+  testResultText: {
+    fontSize: 10,
+    color: '#00FF00',
+    letterSpacing: 1,
+    fontWeight: '300',
+  },
+  testError: {
+    padding: 10,
+    backgroundColor: 'rgba(255,0,0,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,0,0.3)',
+  },
+  testErrorText: {
+    fontSize: 10,
+    color: '#FF0000',
+    letterSpacing: 1,
+    fontWeight: '300',
   },
 });

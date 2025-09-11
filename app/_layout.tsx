@@ -8,6 +8,7 @@ import { AppModeProvider } from "@/providers/AppModeProvider";
 import { CloudSyncProvider } from "@/providers/CloudSyncProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { CalendarProvider } from "@/providers/CalendarProvider";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -93,20 +94,22 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <AuthProvider>
-          <AppModeProvider>
-            <ClientProvider>
-              <CloudSyncProvider>
-                <CalendarProvider>
-                  <RootLayoutNav />
-                </CalendarProvider>
-              </CloudSyncProvider>
-            </ClientProvider>
-          </AppModeProvider>
-        </AuthProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AuthProvider>
+            <AppModeProvider>
+              <ClientProvider>
+                <CloudSyncProvider>
+                  <CalendarProvider>
+                    <RootLayoutNav />
+                  </CalendarProvider>
+                </CloudSyncProvider>
+              </ClientProvider>
+            </AppModeProvider>
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
