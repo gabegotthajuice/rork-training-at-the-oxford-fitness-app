@@ -8,6 +8,7 @@ import { AppModeProvider } from "@/providers/AppModeProvider";
 import { CloudSyncProvider } from "@/providers/CloudSyncProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { CalendarProvider } from "@/providers/CalendarProvider";
+import { HealthKitProvider } from "@/providers/HealthKitProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
@@ -84,6 +85,14 @@ function RootLayoutNav() {
         title: "Calendar Integration",
         headerShown: false
       }} />
+      <Stack.Screen name="profile-setup" options={{ 
+        title: "Profile Setup",
+        headerShown: false
+      }} />
+      <Stack.Screen name="health-sync" options={{ 
+        title: "Health Data",
+        headerShown: true
+      }} />
     </Stack>
   );
 }
@@ -102,7 +111,9 @@ export default function RootLayout() {
               <ClientProvider>
                 <CloudSyncProvider>
                   <CalendarProvider>
-                    <RootLayoutNav />
+                    <HealthKitProvider>
+                      <RootLayoutNav />
+                    </HealthKitProvider>
                   </CalendarProvider>
                 </CloudSyncProvider>
               </ClientProvider>
