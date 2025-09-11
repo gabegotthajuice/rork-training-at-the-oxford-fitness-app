@@ -111,7 +111,7 @@ export default function TrainerDashboard() {
   
   const handleClientPress = (clientId: string) => {
     router.push({
-      pathname: '/trainer-client-health',
+      pathname: '/trainer-client-detail',
       params: { clientId },
     });
   };
