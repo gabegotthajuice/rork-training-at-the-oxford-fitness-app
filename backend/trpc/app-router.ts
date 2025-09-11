@@ -15,6 +15,9 @@ import { getAllClientsDataProcedure } from "@/backend/trpc/routes/trainer/get-al
 import { getBusinessInfoProcedure } from "@/backend/trpc/routes/business/get-business-info/route";
 import { syncToSquarespaceProcedure } from "@/backend/trpc/routes/business/sync-to-squarespace/route";
 import { updateBusinessInfoProcedure } from "@/backend/trpc/routes/business/update-business-info/route";
+import { submitIntakeProcedure } from "@/backend/trpc/routes/oxford/submit-intake/route";
+import { logMealProcedure } from "@/backend/trpc/routes/oxford/log-meal/route";
+import { getCommunityFeedProcedure, postToCommunityProcedure } from "@/backend/trpc/routes/oxford/get-community-feed/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -46,6 +49,12 @@ export const appRouter = createTRPCRouter({
   trainer: createTRPCRouter({
     getClientHealth: getClientHealthDataProcedure,
     getAllClientsData: getAllClientsDataProcedure,
+  }),
+  oxford: createTRPCRouter({
+    submitIntake: submitIntakeProcedure,
+    logMeal: logMealProcedure,
+    getCommunityFeed: getCommunityFeedProcedure,
+    postToCommunity: postToCommunityProcedure,
   }),
 });
 

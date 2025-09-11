@@ -7,30 +7,78 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, User, Target, Activity } from 'lucide-react-native';
+import { ChevronRight, User, Target, Activity, Clock, Utensils } from 'lucide-react-native';
+import { trpc } from '@/lib/trpc';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     height: '',
     weight: '',
     goals: '',
     experience: '',
+    plan: 'basic',
+    calories_target: 2000,
+    protein_target: 150,
+    breakfast_time: '08:00',
+    lunch_time: '12:00',
+    dinner_time: '18:00',
   });
+  
+  const submitIntake = trpc.oxford.submitIntake.useMutation();
 
-  const handleNext = () => {
-    if (step < 3) {
+  const handleNext = async () => {
+    if (step < 4) {
       setStep(step + 1);
     } else {
-      // Complete onboarding
-      router.replace('/(tabs)');
+      // Submit intake form
+      setIsSubmitting(true);
+      try {
+        // Generate client ID
+        const clientId = `client_${Date.now()}`;
+        await AsyncStorage.setItem('clientId', clientId);
+        
+        // Submit to Oxford intake
+        await submitIntake.mutateAsync({
+          client_id: clientId,
+          email: formData.email,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          goals: formData.goals,
+          plan: formData.plan,
+          calories_target: formData.calories_target,
+          protein_target: formData.protein_target,
+          breakfast_time: formData.breakfast_time,
+          lunch_time: formData.lunch_time,
+          dinner_time: formData.dinner_time,
+          start_date: new Date().toISOString().split('T')[0]
+        });
+        
+        // Store profile locally
+        await AsyncStorage.setItem('userProfile', JSON.stringify(formData));
+        await AsyncStorage.setItem('onboardingCompleted', 'true');
+        
+        // Navigate to main app
+        router.replace('/(tabs)');
+      } catch (error) {
+        console.error('Onboarding error:', error);
+        Alert.alert('Error', 'Failed to complete onboarding. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -47,10 +95,18 @@ export default function OnboardingScreen() {
             
             <TextInput
               style={styles.input}
-              placeholder="Full Name"
+              placeholder="First Name"
               placeholderTextColor="#999"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
+              value={formData.first_name}
+              onChangeText={(text) => setFormData({ ...formData, first_name: text })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor="#999"
+              value={formData.last_name}
+              onChangeText={(text) => setFormData({ ...formData, last_name: text })}
             />
             
             <TextInput
@@ -125,10 +181,85 @@ export default function OnboardingScreen() {
               placeholder="Describe your fitness goals..."
               placeholderTextColor="#999"
               multiline
-              numberOfLines={6}
+              numberOfLines={4}
               value={formData.goals}
               onChangeText={(text) => setFormData({ ...formData, goals: text })}
             />
+            
+            <View style={styles.targetSection}>
+              <Text style={styles.sectionLabel}>Daily Targets</Text>
+              <View style={styles.targetRow}>
+                <Text style={styles.targetLabel}>Calories:</Text>
+                <TextInput
+                  style={styles.targetInput}
+                  placeholder="2000"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                  value={String(formData.calories_target)}
+                  onChangeText={(text) => setFormData({ ...formData, calories_target: parseInt(text) || 2000 })}
+                />
+              </View>
+              <View style={styles.targetRow}>
+                <Text style={styles.targetLabel}>Protein (g):</Text>
+                <TextInput
+                  style={styles.targetInput}
+                  placeholder="150"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                  value={String(formData.protein_target)}
+                  onChangeText={(text) => setFormData({ ...formData, protein_target: parseInt(text) || 150 })}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      
+      case 4:
+        return (
+          <View style={styles.stepContent}>
+            <Utensils size={48} color="#FFD700" />
+            <Text style={styles.stepTitle}>Meal Schedule</Text>
+            <Text style={styles.stepDescription}>
+              When do you typically eat your meals?
+            </Text>
+            
+            <View style={styles.mealTimeSection}>
+              <View style={styles.mealTimeRow}>
+                <Clock size={20} color="#666" />
+                <Text style={styles.mealLabel}>Breakfast:</Text>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="08:00"
+                  placeholderTextColor="#999"
+                  value={formData.breakfast_time}
+                  onChangeText={(text) => setFormData({ ...formData, breakfast_time: text })}
+                />
+              </View>
+              
+              <View style={styles.mealTimeRow}>
+                <Clock size={20} color="#666" />
+                <Text style={styles.mealLabel}>Lunch:</Text>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="12:00"
+                  placeholderTextColor="#999"
+                  value={formData.lunch_time}
+                  onChangeText={(text) => setFormData({ ...formData, lunch_time: text })}
+                />
+              </View>
+              
+              <View style={styles.mealTimeRow}>
+                <Clock size={20} color="#666" />
+                <Text style={styles.mealLabel}>Dinner:</Text>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="18:00"
+                  placeholderTextColor="#999"
+                  value={formData.dinner_time}
+                  onChangeText={(text) => setFormData({ ...formData, dinner_time: text })}
+                />
+              </View>
+            </View>
           </View>
         );
       
@@ -151,7 +282,7 @@ export default function OnboardingScreen() {
 
         {/* Progress Indicator */}
         <View style={styles.progressContainer}>
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <View
               key={i}
               style={[
@@ -178,17 +309,24 @@ export default function OnboardingScreen() {
           )}
           
           <TouchableOpacity
-            style={styles.nextButton}
+            style={[styles.nextButton, isSubmitting && styles.disabledButton]}
             onPress={handleNext}
+            disabled={isSubmitting}
           >
             <LinearGradient
-              colors={['#FFD700', '#FFA500']}
+              colors={isSubmitting ? ['#ccc', '#aaa'] : ['#FFD700', '#FFA500']}
               style={styles.nextButtonGradient}
             >
-              <Text style={styles.nextButtonText}>
-                {step === 3 ? 'Get Started' : 'Next'}
-              </Text>
-              <ChevronRight size={20} color="#001F3F" />
+              {isSubmitting ? (
+                <ActivityIndicator color="#001F3F" />
+              ) : (
+                <>
+                  <Text style={styles.nextButtonText}>
+                    {step === 4 ? 'Complete Setup' : 'Next'}
+                  </Text>
+                  <ChevronRight size={20} color="#001F3F" />
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -296,5 +434,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#001F3F',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  targetSection: {
+    width: '100%',
+    marginTop: 20,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#001F3F',
+    marginBottom: 15,
+  },
+  targetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  targetLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: '#666',
+  },
+  targetInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 16,
+    color: '#001F3F',
+  },
+  mealTimeSection: {
+    width: '100%',
+    marginTop: 20,
+  },
+  mealTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 10,
+  },
+  mealLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: '#666',
+  },
+  timeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 16,
+    color: '#001F3F',
+    textAlign: 'center',
   },
 });
