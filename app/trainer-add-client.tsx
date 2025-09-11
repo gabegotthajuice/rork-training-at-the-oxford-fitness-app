@@ -35,10 +35,13 @@ import {
   X,
   Search,
   Phone,
-  Users
+  Users,
+  Download,
+  Upload
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Contacts from 'expo-contacts';
+import { trpc } from '@/lib/trpc';
 
 interface Contact {
   id: string;
@@ -80,7 +83,17 @@ export default function AddClient() {
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportSettings, setBulkImportSettings] = useState({
+    defaultPackageType: 'Consultation Package',
+    defaultSessionsTotal: 1,
+  });
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  
+  // tRPC mutations
+  const addClientMutation = trpc.clients.add.useMutation();
+  const importContactsMutation = trpc.clients.importContacts.useMutation();
   
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -159,21 +172,29 @@ export default function AddClient() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate required fields
     if (!formData.name || !formData.email || !formData.phone) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
     
-    // In production, save to database with integrations
-    console.log('Saving client:', { ...formData, integrations });
-    
-    Alert.alert(
-      'Client Added Successfully',
-      `${formData.name} has been added to your client roster.${scaleConnected ? ' Smart scale integration is active.' : ''}`,
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+    try {
+      const result = await addClientMutation.mutateAsync({
+        ...formData,
+        integrations,
+        selectedScaleBrand: selectedScaleBrand || undefined,
+      });
+      
+      Alert.alert(
+        'Client Added Successfully',
+        result.message + (scaleConnected ? ' Smart scale integration is active.' : ''),
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (error) {
+      console.error('Error adding client:', error);
+      Alert.alert('Error', 'Failed to add client. Please try again.');
+    }
   };
   
   const handleScaleConnect = () => {
@@ -210,6 +231,59 @@ export default function AddClient() {
         { text: 'Cancel', style: 'cancel' }
       ]
     );
+  };
+  
+  const toggleContactSelection = (contactId: string) => {
+    const newSelected = new Set(selectedContacts);
+    if (newSelected.has(contactId)) {
+      newSelected.delete(contactId);
+    } else {
+      newSelected.add(contactId);
+    }
+    setSelectedContacts(newSelected);
+  };
+  
+  const handleBulkImport = async () => {
+    if (selectedContacts.size === 0) {
+      Alert.alert('No Contacts Selected', 'Please select at least one contact to import.');
+      return;
+    }
+    
+    try {
+      const result = await importContactsMutation.mutateAsync({
+        contacts: contacts,
+        selectedContactIds: Array.from(selectedContacts),
+        defaultPackageType: bulkImportSettings.defaultPackageType,
+        defaultSessionsTotal: bulkImportSettings.defaultSessionsTotal,
+      });
+      
+      Alert.alert(
+        'Bulk Import Complete',
+        result.message,
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              setShowContactPicker(false);
+              setSelectedContacts(new Set());
+              setContactSearch('');
+              router.back();
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error importing contacts:', error);
+      Alert.alert('Import Error', 'Failed to import contacts. Please try again.');
+    }
+  };
+  
+  const selectAllContacts = () => {
+    if (selectedContacts.size === filteredContacts.length) {
+      setSelectedContacts(new Set());
+    } else {
+      setSelectedContacts(new Set(filteredContacts.map(c => c.id)));
+    }
   };
 
   return (
@@ -571,15 +645,29 @@ export default function AddClient() {
           </View>
 
           {/* Save Button */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={[
+              styles.saveButton,
+              addClientMutation.isPending && styles.saveButtonDisabled
+            ]} 
+            onPress={handleSave} 
+            activeOpacity={0.7}
+            disabled={addClientMutation.isPending}
+          >
             <LinearGradient
               colors={['#00FFFF', '#0080FF', '#FF00FF']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.saveGradient}
             >
-              <Save size={20} color="#000" />
-              <Text style={styles.saveButtonText}>INITIALIZE ATHLETE</Text>
+              {addClientMutation.isPending ? (
+                <ActivityIndicator size={20} color="#000" />
+              ) : (
+                <Save size={20} color="#000" />
+              )}
+              <Text style={styles.saveButtonText}>
+                {addClientMutation.isPending ? 'ADDING...' : 'INITIALIZE ATHLETE'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -602,18 +690,103 @@ export default function AddClient() {
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleContainer}>
                   <Phone size={20} color="#00FFFF" />
-                  <Text style={styles.modalTitle}>SELECT FROM CONTACTS</Text>
+                  <Text style={styles.modalTitle}>
+                    {showBulkImport ? 'BULK IMPORT CONTACTS' : 'SELECT FROM CONTACTS'}
+                  </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowContactPicker(false);
-                    setContactSearch('');
-                  }}
-                  style={styles.closeButton}
-                >
-                  <X size={24} color="#FF00FF" />
-                </TouchableOpacity>
+                <View style={styles.headerActions}>
+                  {!showBulkImport && (
+                    <TouchableOpacity
+                      onPress={() => setShowBulkImport(true)}
+                      style={styles.bulkImportButton}
+                    >
+                      <Download size={16} color="#FFD700" />
+                      <Text style={styles.bulkImportButtonText}>BULK</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowContactPicker(false);
+                      setShowBulkImport(false);
+                      setSelectedContacts(new Set());
+                      setContactSearch('');
+                    }}
+                    style={styles.closeButton}
+                  >
+                    <X size={24} color="#FF00FF" />
+                  </TouchableOpacity>
+                </View>
               </View>
+              
+              {/* Bulk Import Controls */}
+              {showBulkImport && (
+                <View style={styles.bulkImportControls}>
+                  <View style={styles.bulkImportHeader}>
+                    <TouchableOpacity
+                      onPress={selectAllContacts}
+                      style={styles.selectAllButton}
+                    >
+                      <Text style={styles.selectAllText}>
+                        {selectedContacts.size === filteredContacts.length ? 'DESELECT ALL' : 'SELECT ALL'}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={styles.selectedCount}>
+                      {selectedContacts.size} selected
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.bulkImportSettings}>
+                    <View style={styles.settingRow}>
+                      <Text style={styles.settingLabel}>Default Package:</Text>
+                      <TextInput
+                        style={styles.settingInput}
+                        value={bulkImportSettings.defaultPackageType}
+                        onChangeText={(text) => setBulkImportSettings({
+                          ...bulkImportSettings,
+                          defaultPackageType: text
+                        })}
+                        placeholder="Package type"
+                        placeholderTextColor="#666"
+                      />
+                    </View>
+                    
+                    <View style={styles.settingRow}>
+                      <Text style={styles.settingLabel}>Default Sessions:</Text>
+                      <TextInput
+                        style={styles.settingInput}
+                        value={bulkImportSettings.defaultSessionsTotal.toString()}
+                        onChangeText={(text) => setBulkImportSettings({
+                          ...bulkImportSettings,
+                          defaultSessionsTotal: parseInt(text) || 1
+                        })}
+                        placeholder="1"
+                        placeholderTextColor="#666"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.bulkImportActionButton,
+                      selectedContacts.size === 0 && styles.bulkImportActionButtonDisabled
+                    ]}
+                    onPress={handleBulkImport}
+                    disabled={selectedContacts.size === 0 || importContactsMutation.isPending}
+                  >
+                    {importContactsMutation.isPending ? (
+                      <ActivityIndicator size="small" color="#000" />
+                    ) : (
+                      <>
+                        <Upload size={16} color="#000" />
+                        <Text style={styles.bulkImportActionText}>
+                          IMPORT {selectedContacts.size} CLIENT{selectedContacts.size !== 1 ? 'S' : ''}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Search Bar */}
               <View style={styles.searchContainer}>
@@ -643,11 +816,19 @@ export default function AddClient() {
                 }
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={styles.contactItem}
-                    onPress={() => selectContact(item)}
+                    style={[
+                      styles.contactItem,
+                      showBulkImport && selectedContacts.has(item.id) && styles.contactItemSelected
+                    ]}
+                    onPress={() => showBulkImport ? toggleContactSelection(item.id) : selectContact(item)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.contactAvatar}>
+                      {showBulkImport && selectedContacts.has(item.id) && (
+                        <View style={styles.selectedOverlay}>
+                          <CheckCircle size={20} color="#00FF00" />
+                        </View>
+                      )}
                       <Text style={styles.contactInitial}>
                         {item.name?.charAt(0).toUpperCase()}
                       </Text>
@@ -665,7 +846,7 @@ export default function AddClient() {
                         </Text>
                       )}
                     </View>
-                    <ChevronRight size={20} color="#00FFFF" />
+                    {!showBulkImport && <ChevronRight size={20} color="#00FFFF" />}
                   </TouchableOpacity>
                 )}
                 ItemSeparatorComponent={() => <View style={styles.contactSeparator} />}
@@ -986,5 +1167,114 @@ const styles = StyleSheet.create({
   },
   animatedContainer: {
     opacity: 1,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bulkImportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.3)',
+    backgroundColor: 'rgba(255,215,0,0.05)',
+  },
+  bulkImportButtonText: {
+    fontSize: 9,
+    color: '#FFD700',
+    letterSpacing: 1,
+    fontWeight: '300',
+  },
+  bulkImportControls: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,255,255,0.2)',
+  },
+  bulkImportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  selectAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,255,0.3)',
+    backgroundColor: 'rgba(0,255,255,0.05)',
+  },
+  selectAllText: {
+    fontSize: 10,
+    color: '#00FFFF',
+    letterSpacing: 1,
+    fontWeight: '300',
+  },
+  selectedCount: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontWeight: '500',
+  },
+  bulkImportSettings: {
+    marginBottom: 15,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 10,
+  },
+  settingLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    minWidth: 100,
+  },
+  settingInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    padding: 8,
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  bulkImportActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#00FFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,255,0.3)',
+  },
+  bulkImportActionButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: 'rgba(0,255,255,0.2)',
+  },
+  bulkImportActionText: {
+    fontSize: 11,
+    color: '#000000',
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  contactItemSelected: {
+    backgroundColor: 'rgba(0,255,255,0.1)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#00FFFF',
+  },
+  selectedOverlay: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 10,
   },
 });
