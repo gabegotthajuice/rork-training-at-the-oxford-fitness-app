@@ -643,7 +643,7 @@ export default function DashboardScreen() {
         <View style={styles.packageActionContainer}>
           <TouchableOpacity 
             style={styles.packageActionCard}
-            onPress={() => router.push('/resources')}
+            onPress={() => router.push('/packages')}
             activeOpacity={0.7}
           >
             <LinearGradient
