@@ -12,6 +12,9 @@ import { syncHealthDataProcedure } from "@/backend/trpc/routes/health/sync-healt
 import { getHealthDataProcedure } from "@/backend/trpc/routes/health/get-health-data/route";
 import { getClientHealthDataProcedure } from "@/backend/trpc/routes/trainer/get-client-health-data/route";
 import { getAllClientsDataProcedure } from "@/backend/trpc/routes/trainer/get-all-clients-data/route";
+import { getBusinessInfoProcedure } from "@/backend/trpc/routes/business/get-business-info/route";
+import { syncToSquarespaceProcedure } from "@/backend/trpc/routes/business/sync-to-squarespace/route";
+import { updateBusinessInfoProcedure } from "@/backend/trpc/routes/business/update-business-info/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -20,6 +23,11 @@ export const appRouter = createTRPCRouter({
   payments: createTRPCRouter({
     createSquarespaceCheckout: createSquarespaceCheckoutProcedure,
     handleSquarespaceWebhook: handleSquarespaceWebhookProcedure,
+  }),
+  business: createTRPCRouter({
+    getInfo: getBusinessInfoProcedure,
+    syncToSquarespace: syncToSquarespaceProcedure,
+    updateInfo: updateBusinessInfoProcedure,
   }),
   clients: createTRPCRouter({
     add: addClientProcedure,
