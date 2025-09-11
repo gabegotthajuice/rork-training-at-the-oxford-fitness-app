@@ -28,7 +28,7 @@ const addClientSchema = z.object({
 
 export const addClientProcedure = protectedProcedure
   .input(addClientSchema)
-  .mutation(async ({ input }) => {
+  .mutation(async ({ ctx, input }) => {
     console.log('Adding new client:', input);
     
     // Generate unique client ID
@@ -69,9 +69,16 @@ export const addClientProcedure = protectedProcedure
       updatedAt: new Date().toISOString(),
     };
     
-    // In a real app, save to database
-    // For now, we'll return the created client
-    console.log('Client created successfully:', newClient);
+    // Get existing clients from cloud storage
+    const existingClients = await ctx.db.get('clients') || {};
+    
+    // Add new client to the collection
+    existingClients[clientId] = newClient;
+    
+    // Save updated clients back to cloud storage
+    await ctx.db.set('clients', existingClients);
+    
+    console.log('Client saved to cloud storage:', newClient);
     
     return {
       success: true,

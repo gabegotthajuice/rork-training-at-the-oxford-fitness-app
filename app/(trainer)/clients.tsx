@@ -8,9 +8,13 @@ import {
   TextInput,
   Image,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, Plus, User, TrendingUp, Calendar } from 'lucide-react-native';
+import { Search, Plus, User, TrendingUp, Calendar, RefreshCw, MoreVertical } from 'lucide-react-native';
+import { trpc } from '@/lib/trpc';
 
 interface Client {
   id: string;
@@ -18,76 +22,84 @@ interface Client {
   email: string;
   phone: string;
   joinDate: string;
-  lastSession: string;
+  lastSession?: string;
   sessionsRemaining: number;
   packageType: string;
   progressScore: number;
   avatar?: string;
   status: 'active' | 'inactive' | 'paused';
+  goals?: string;
+  currentWeight?: string;
+  targetWeight?: string;
 }
-
-const mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@email.com',
-    phone: '(555) 123-4567',
-    joinDate: '2024-01-15',
-    lastSession: '2024-12-18',
-    sessionsRemaining: 8,
-    packageType: '12-Session Package',
-    progressScore: 85,
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'mchen@email.com',
-    phone: '(555) 234-5678',
-    joinDate: '2024-02-20',
-    lastSession: '2024-12-17',
-    sessionsRemaining: 4,
-    packageType: '8-Session Package',
-    progressScore: 72,
-    status: 'active',
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    email: 'emily.r@email.com',
-    phone: '(555) 345-6789',
-    joinDate: '2024-03-10',
-    lastSession: '2024-12-16',
-    sessionsRemaining: 12,
-    packageType: '16-Session Package',
-    progressScore: 91,
-    status: 'active',
-  },
-  {
-    id: '4',
-    name: 'David Thompson',
-    email: 'dthompson@email.com',
-    phone: '(555) 456-7890',
-    joinDate: '2024-01-05',
-    lastSession: '2024-11-30',
-    sessionsRemaining: 0,
-    packageType: '8-Session Package',
-    progressScore: 68,
-    status: 'paused',
-  },
-];
 
 export default function ClientsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'active' | 'inactive' | 'paused'>('all');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredClients = mockClients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          client.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || client.status === selectedFilter;
-    return matchesSearch && matchesFilter;
+  // Fetch clients from backend
+  const clientsQuery = trpc.clients.getAll.useQuery({
+    search: searchQuery,
+    status: selectedFilter,
+    limit: 50,
+    offset: 0,
   });
+
+  const clients = clientsQuery.data?.clients || [];
+  const stats = clientsQuery.data?.stats;
+  
+  // Delete client mutation
+  const deleteClientMutation = trpc.clients.delete.useMutation({
+    onSuccess: () => {
+      clientsQuery.refetch();
+    },
+  });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await clientsQuery.refetch();
+    setRefreshing(false);
+  };
+
+  const handleDeleteClient = (clientId: string, clientName: string) => {
+    Alert.alert(
+      'Remove Client',
+      `Are you sure you want to remove ${clientName}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await deleteClientMutation.mutateAsync({ clientId });
+              Alert.alert('Success', result.message);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove client.');
+            }
+          },
+        },
+      ]
+    );
+  };
+  
+  const handleClientOptions = (client: Client) => {
+    Alert.alert(
+      client.name,
+      'Choose an action',
+      [
+        { text: 'View Details', onPress: () => router.push(`/trainer-client-detail?id=${client.id}`) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDeleteClient(client.id, client.name)
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   const getStatusColor = (status: Client['status']) => {
     switch (status) {
@@ -108,6 +120,7 @@ export default function ClientsScreen() {
     <TouchableOpacity
       style={styles.clientCard}
       onPress={() => router.push(`/trainer-client-detail?id=${item.id}`)}
+      onLongPress={() => handleClientOptions(item)}
       activeOpacity={0.7}
     >
       <View style={styles.clientHeader}>
@@ -124,6 +137,12 @@ export default function ClientsScreen() {
           <Text style={styles.clientName}>{item.name}</Text>
           <Text style={styles.clientEmail}>{item.email}</Text>
         </View>
+        <TouchableOpacity
+          style={styles.moreButton}
+          onPress={() => handleClientOptions(item)}
+        >
+          <MoreVertical size={20} color="#666" />
+        </TouchableOpacity>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
         </View>
@@ -148,12 +167,14 @@ export default function ClientsScreen() {
         </View>
       </View>
 
-      <View style={styles.lastSessionContainer}>
-        <Text style={styles.lastSessionLabel}>Last Session: </Text>
-        <Text style={styles.lastSessionDate}>
-          {new Date(item.lastSession).toLocaleDateString()}
-        </Text>
-      </View>
+      {item.lastSession && (
+        <View style={styles.lastSessionContainer}>
+          <Text style={styles.lastSessionLabel}>Last Session: </Text>
+          <Text style={styles.lastSessionDate}>
+            {new Date(item.lastSession).toLocaleDateString()}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -205,35 +226,154 @@ export default function ClientsScreen() {
 
       <View style={styles.statsOverview}>
         <View style={styles.overviewItem}>
-          <Text style={styles.overviewValue}>{mockClients.length}</Text>
+          <Text style={styles.overviewValue}>{stats?.total || 0}</Text>
           <Text style={styles.overviewLabel}>Total Clients</Text>
         </View>
         <View style={styles.overviewItem}>
-          <Text style={styles.overviewValue}>
-            {mockClients.filter(c => c.status === 'active').length}
-          </Text>
+          <Text style={styles.overviewValue}>{stats?.active || 0}</Text>
           <Text style={styles.overviewLabel}>Active</Text>
         </View>
         <View style={styles.overviewItem}>
-          <Text style={styles.overviewValue}>
-            {mockClients.reduce((sum, c) => sum + c.sessionsRemaining, 0)}
-          </Text>
+          <Text style={styles.overviewValue}>{stats?.totalSessions || 0}</Text>
           <Text style={styles.overviewLabel}>Total Sessions</Text>
         </View>
+        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+          <RefreshCw size={16} color="#FFD700" />
+        </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredClients}
-        renderItem={renderClient}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {clientsQuery.isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFD700" />
+          <Text style={styles.loadingText}>Loading clients...</Text>
+        </View>
+      ) : clientsQuery.isError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load clients</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => clientsQuery.refetch()}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : clients.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <User size={48} color="#666" />
+          <Text style={styles.emptyTitle}>No Clients Yet</Text>
+          <Text style={styles.emptyText}>Add your first client to get started</Text>
+          <TouchableOpacity
+            style={styles.addFirstButton}
+            onPress={() => router.push('/trainer-add-client')}
+          >
+            <Plus size={20} color="#001F3F" />
+            <Text style={styles.addFirstButtonText}>Add First Client</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={clients as Client[]}
+          renderItem={renderClient}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#FFD700"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsText}>No clients found</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF5252',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#FFD700',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#001F3F',
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 30,
+  },
+  addFirstButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FFD700',
+    borderRadius: 8,
+  },
+  addFirstButtonText: {
+    color: '#001F3F',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  noResultsContainer: {
+    paddingVertical: 50,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  moreButton: {
+    padding: 8,
+    marginRight: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',

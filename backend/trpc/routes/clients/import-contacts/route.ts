@@ -19,11 +19,14 @@ const importContactsSchema = z.object({
 
 export const importContactsProcedure = protectedProcedure
   .input(importContactsSchema)
-  .mutation(async ({ input }) => {
+  .mutation(async ({ ctx, input }) => {
     console.log('Importing contacts as clients:', input);
     
     const importedClients = [];
     const errors = [];
+    
+    // Get existing clients from cloud storage
+    const existingClients = await ctx.db.get('clients') || {};
     
     for (const contactId of input.selectedContactIds) {
       const contact = input.contacts.find(c => c.id === contactId);
@@ -47,8 +50,8 @@ export const importContactsProcedure = protectedProcedure
         continue;
       }
       
-      // Generate unique client ID
-      const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique client ID with timestamp to avoid collisions
+      const clientId = `client_${Date.now()}_${contactId}_${Math.random().toString(36).substr(2, 9)}`;
       
       // Create client from contact
       const newClient = {
@@ -86,7 +89,14 @@ export const importContactsProcedure = protectedProcedure
         importedFromContacts: true,
       };
       
+      // Add to existing clients
+      existingClients[clientId] = newClient;
       importedClients.push(newClient);
+    }
+    
+    // Save all clients back to cloud storage
+    if (importedClients.length > 0) {
+      await ctx.db.set('clients', existingClients);
     }
     
     console.log(`Successfully imported ${importedClients.length} clients`);

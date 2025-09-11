@@ -5,6 +5,7 @@ import { handleSquarespaceWebhookProcedure } from "./routes/payments/handle-squa
 import { addClientProcedure } from "@/backend/trpc/routes/clients/add-client/route";
 import { getClientsProcedure } from "@/backend/trpc/routes/clients/get-clients/route";
 import { importContactsProcedure } from "@/backend/trpc/routes/clients/import-contacts/route";
+import { deleteClientProcedure } from "@/backend/trpc/routes/clients/delete-client/route";
 import { createProfileProcedure } from "@/backend/trpc/routes/profiles/create-profile/route";
 import { getProfileProcedure } from "@/backend/trpc/routes/profiles/get-profile/route";
 import { updateProfileProcedure } from "@/backend/trpc/routes/profiles/update-profile/route";
@@ -43,6 +44,7 @@ export const appRouter = createTRPCRouter({
     add: addClientProcedure,
     getAll: getClientsProcedure,
     importContacts: importContactsProcedure,
+    delete: deleteClientProcedure,
   }),
   profiles: createTRPCRouter({
     create: createProfileProcedure,
