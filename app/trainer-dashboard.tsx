@@ -110,10 +110,7 @@ export default function TrainerDashboard() {
   };
   
   const handleClientPress = (clientId: string) => {
-    router.push({
-      pathname: '/trainer-client-detail',
-      params: { clientId },
-    });
+    router.push(`/trainer-client-detail?clientId=${clientId}`);
   };
   
   const activeClients = clientsQuery.data?.clients.filter(c => {

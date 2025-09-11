@@ -38,14 +38,6 @@ export default function MealUploadScreen() {
   
   const logMealMutation = trpc.oxford.logMeal.useMutation();
   
-  const getMealTag = (): "B" | "L" | "D" | "S" => {
-    const hour = new Date().getHours();
-    if (hour < 10) return "B"; // Breakfast
-    if (hour < 15) return "L"; // Lunch
-    if (hour < 20) return "D"; // Dinner
-    return "S"; // Snack
-  };
-  
   React.useEffect(() => {
     loadClientId();
   }, []);
@@ -200,10 +192,23 @@ export default function MealUploadScreen() {
       // Also log to Oxford system if client ID is available
       if (clientId) {
         try {
+          // Determine meal tag based on current time
+          const hour = new Date().getHours();
+          let mealTag: "B" | "L" | "D" | "S";
+          if (hour < 10) {
+            mealTag = "B"; // Breakfast
+          } else if (hour < 15) {
+            mealTag = "L"; // Lunch
+          } else if (hour < 20) {
+            mealTag = "D"; // Dinner
+          } else {
+            mealTag = "S"; // Snack
+          }
+          
           await logMealMutation.mutateAsync({
             client_id: clientId,
             date: new Date().toISOString().split('T')[0],
-            meal_tag: getMealTag(),
+            meal_tag: mealTag,
             notes: analysisData.analysis || '',
             photo_base64: base64Image
           });
