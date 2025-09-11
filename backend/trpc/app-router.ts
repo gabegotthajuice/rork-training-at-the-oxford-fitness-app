@@ -18,6 +18,13 @@ import { updateBusinessInfoProcedure } from "@/backend/trpc/routes/business/upda
 import { submitIntakeProcedure } from "@/backend/trpc/routes/oxford/submit-intake/route";
 import { logMealProcedure } from "@/backend/trpc/routes/oxford/log-meal/route";
 import { getCommunityFeedProcedure, postToCommunityProcedure } from "@/backend/trpc/routes/oxford/get-community-feed/route";
+import { getCalendarAuthUrlProcedure } from "@/backend/trpc/routes/oxford/get-calendar-auth-url/route";
+import { getCalendarEventsProcedure } from "@/backend/trpc/routes/oxford/get-calendar-events/route";
+import { getDailyMealsProcedure } from "@/backend/trpc/routes/oxford/get-daily-meals/route";
+import { getMealHistoryProcedure } from "@/backend/trpc/routes/oxford/get-meal-history/route";
+import { createCheckoutProcedure } from "@/backend/trpc/routes/oxford/create-checkout/route";
+import { getSubscriptionProcedure } from "@/backend/trpc/routes/oxford/get-subscription/route";
+import { getIntakeStatusProcedure } from "@/backend/trpc/routes/oxford/get-intake-status/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -52,9 +59,16 @@ export const appRouter = createTRPCRouter({
   }),
   oxford: createTRPCRouter({
     submitIntake: submitIntakeProcedure,
+    getIntakeStatus: getIntakeStatusProcedure,
     logMeal: logMealProcedure,
+    getDailyMeals: getDailyMealsProcedure,
+    getMealHistory: getMealHistoryProcedure,
     getCommunityFeed: getCommunityFeedProcedure,
     postToCommunity: postToCommunityProcedure,
+    getCalendarAuthUrl: getCalendarAuthUrlProcedure,
+    getCalendarEvents: getCalendarEventsProcedure,
+    createCheckout: createCheckoutProcedure,
+    getSubscription: getSubscriptionProcedure,
   }),
 });
 

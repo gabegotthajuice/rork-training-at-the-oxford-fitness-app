@@ -25,6 +25,8 @@ import { useClient } from '@/providers/ClientProvider';
 import { router, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useCloudSync } from '@/providers/CloudSyncProvider';
+import { trpc } from '@/lib/trpc';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MealUploadScreen() {
   const { clientData, addMealEntry, getTodayMealCount } = useClient();
@@ -32,6 +34,29 @@ export default function MealUploadScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+  
+  const logMealMutation = trpc.oxford.logMeal.useMutation();
+  
+  React.useEffect(() => {
+    loadClientId();
+  }, []);
+  
+  const loadClientId = async () => {
+    try {
+      const storedClientId = await AsyncStorage.getItem('oxford:clientId');
+      if (storedClientId) {
+        setClientId(storedClientId);
+      } else {
+        // Generate a client ID if none exists
+        const newClientId = `client_${Date.now()}`;
+        await AsyncStorage.setItem('oxford:clientId', newClientId);
+        setClientId(newClientId);
+      }
+    } catch (error) {
+      console.error('Error loading client ID:', error);
+    }
+  };
 
   const pickImage = async (useCamera: boolean) => {
     const permissionResult = useCamera
@@ -147,7 +172,7 @@ export default function MealUploadScreen() {
       
       setAnalysisResult(analysisData);
       
-      // Save meal entry
+      // Save meal entry locally
       const mealEntry = {
         id: Date.now().toString(),
         date: new Date().toISOString().split('T')[0],
@@ -163,6 +188,34 @@ export default function MealUploadScreen() {
       
       // Sync to cloud for trainer
       await syncMealToCloud(mealEntry);
+      
+      // Also log to Oxford system if client ID is available
+      if (clientId) {
+        try {
+          // Create FormData for the Oxford meal logging
+          const formData = new FormData();
+          formData.append('client_id', clientId);
+          formData.append('date', new Date().toISOString().split('T')[0]);
+          formData.append('meal_tag', getMealTag());
+          formData.append('notes', analysisData.analysis || '');
+          
+          // Convert image to blob for upload
+          if (selectedImage && base64Image) {
+            const response = await fetch(selectedImage);
+            const blob = await response.blob();
+            formData.append('photo', blob, 'meal.jpg');
+          }
+          
+          await logMealMutation.mutateAsync({
+            formData: formData as any
+          });
+          
+          console.log('Meal logged to Oxford system successfully');
+        } catch (oxfordError) {
+          console.error('Error logging to Oxford system:', oxfordError);
+          // Don't fail the whole process if Oxford logging fails
+        }
+      }
       
     } catch (error) {
       console.error('Error analyzing meal:', error);
