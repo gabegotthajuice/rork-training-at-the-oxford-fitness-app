@@ -20,9 +20,14 @@
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSContactsUsageDescription": "A message that tells the user why the app is requesting access to the user's contacts."
+        "NSContactsUsageDescription": "A message that tells the user why the app is requesting access to the user's contacts.",
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
       },
-      "accessesContactNotes": true
+      "accessesContactNotes": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -59,7 +64,15 @@
         {
           "contactsPermission": "Allow $(PRODUCT_NAME) to access your contacts."
         }
-      ]
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+        }
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

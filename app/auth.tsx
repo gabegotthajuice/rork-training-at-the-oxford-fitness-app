@@ -16,11 +16,23 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 import { Mail, Lock, User, Sparkles } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { login, signup, isLoginLoading, isSignupLoading, loginError, signupError } = useAuth();
+  const { 
+    login, 
+    signup, 
+    signInWithGoogle,
+    signInWithApple,
+    signInWithSquarespace,
+    isLoginLoading, 
+    isSignupLoading, 
+    isAppleSignInAvailable,
+    loginError, 
+    signupError 
+  } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +57,7 @@ export default function AuthScreen() {
     if (isLogin) {
       login({ email, password }, {
         onSuccess: () => {
-          router.replace(role === 'trainer' ? '/(trainer)/clients' : '/(tabs)/');
+          router.replace(role === 'trainer' ? '/(trainer)/clients' : '/(tabs)');
         },
       });
     } else {
@@ -58,6 +70,30 @@ export default function AuthScreen() {
           router.replace(role === 'trainer' ? '/(trainer)/clients' : '/onboarding');
         },
       });
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      Alert.alert('Error', 'Google Sign-In failed');
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+    } catch (error) {
+      Alert.alert('Error', 'Apple Sign-In failed');
+    }
+  };
+
+  const handleSquarespaceSignIn = async () => {
+    try {
+      await signInWithSquarespace();
+    } catch (error) {
+      Alert.alert('Error', 'Squarespace Sign-In failed');
     }
   };
 
@@ -194,6 +230,45 @@ export default function AuthScreen() {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* OAuth Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>or continue with</Text>
+                <View style={styles.divider} />
+              </View>
+
+              {/* OAuth Buttons */}
+              <View style={styles.oauthContainer}>
+                {/* Google Sign-In */}
+                <TouchableOpacity
+                  style={styles.oauthButton}
+                  onPress={handleGoogleSignIn}
+                >
+                  <Text style={styles.oauthButtonText}>🔍</Text>
+                  <Text style={styles.oauthButtonLabel}>Google</Text>
+                </TouchableOpacity>
+
+                {/* Apple Sign-In */}
+                {Platform.OS === 'ios' && isAppleSignInAvailable && (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={12}
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                  />
+                )}
+
+                {/* Squarespace Sign-In */}
+                <TouchableOpacity
+                  style={styles.oauthButton}
+                  onPress={handleSquarespaceSignIn}
+                >
+                  <Text style={styles.oauthButtonText}>⬛</Text>
+                  <Text style={styles.oauthButtonLabel}>Squarespace</Text>
+                </TouchableOpacity>
+              </View>
 
               {isLogin && (
                 <TouchableOpacity style={styles.forgotButton}>
@@ -384,5 +459,47 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  dividerText: {
+    color: '#8899AA',
+    fontSize: 12,
+    marginHorizontal: 15,
+  },
+  oauthContainer: {
+    gap: 12,
+  },
+  oauthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+    gap: 10,
+  },
+  oauthButtonText: {
+    fontSize: 20,
+  },
+  oauthButtonLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  appleButton: {
+    height: 50,
+    borderRadius: 15,
   },
 });

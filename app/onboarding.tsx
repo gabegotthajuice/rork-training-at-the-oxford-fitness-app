@@ -15,9 +15,11 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, User, Target, Activity, Clock, Utensils, Droplets, Moon, TrendingUp } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
+import { useAuth } from '@/providers/AuthProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OnboardingScreen() {
+  const { completeOnboarding } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -94,7 +96,7 @@ export default function OnboardingScreen() {
         
         // Store profile locally
         await AsyncStorage.setItem('userProfile', JSON.stringify(formData));
-        await AsyncStorage.setItem('onboardingCompleted', 'true');
+        await completeOnboarding();
         
         // Navigate to main app
         router.replace('/(tabs)');

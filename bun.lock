@@ -16,10 +16,12 @@
         "@trpc/server": "^11.5.1",
         "@ungap/structured-clone": "^1.3.0",
         "expo": "^53.0.4",
+        "expo-apple-authentication": "~7.2.4",
         "expo-auth-session": "~6.2.1",
         "expo-blur": "~14.1.4",
         "expo-constants": "~17.1.4",
         "expo-contacts": "~14.2.5",
+        "expo-crypto": "~14.1.5",
         "expo-font": "~13.3.0",
         "expo-haptics": "~14.1.4",
         "expo-image": "~2.1.6",
@@ -28,6 +30,7 @@
         "expo-linking": "~7.1.4",
         "expo-location": "~18.1.4",
         "expo-router": "~5.0.3",
+        "expo-secure-store": "~14.2.4",
         "expo-splash-screen": "~0.30.7",
         "expo-status-bar": "~2.2.3",
         "expo-symbols": "~0.4.4",
@@ -914,6 +917,8 @@
 
     "expo": ["expo@53.0.4", "", { "dependencies": { "@babel/runtime": "^7.20.0", "@expo/cli": "0.24.9", "@expo/config": "~11.0.7", "@expo/config-plugins": "~10.0.1", "@expo/fingerprint": "0.12.4", "@expo/metro-config": "0.20.11", "@expo/vector-icons": "^14.0.0", "babel-preset-expo": "~13.1.10", "expo-asset": "~11.1.4", "expo-constants": "~17.1.4", "expo-file-system": "~18.1.8", "expo-font": "~13.3.0", "expo-keep-awake": "~14.1.4", "expo-modules-autolinking": "2.1.9", "expo-modules-core": "2.3.12", "react-native-edge-to-edge": "1.6.0", "whatwg-url-without-unicode": "8.0.0-3" }, "peerDependencies": { "@expo/dom-webview": "*", "@expo/metro-runtime": "*", "react": "*", "react-native": "*", "react-native-webview": "*" }, "optionalPeers": ["@expo/dom-webview", "@expo/metro-runtime", "react-native-webview"], "bin": { "expo": "bin/cli", "fingerprint": "bin/fingerprint", "expo-modules-autolinking": "bin/autolinking" } }, "sha512-h3t507SrayyY/EPoghKkfrJRbo4Qw4ITsvy4Z4GRNxb5DhagUFGB8N/rrjwaBIzryELXiYyDcnrbuMU2TJ9kqw=="],
 
+    "expo-apple-authentication": ["expo-apple-authentication@7.2.4", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-T2agaLLPT4Ax97FeXImB7BCCEzEJ0gB+ZwlFa/FXBtbp6WFKcGRlTVKiX2YPYLZzN5QjXcmQ9HHJ17jRthNHMg=="],
+
     "expo-application": ["expo-application@6.1.5", "", { "peerDependencies": { "expo": "*" } }, "sha512-ToImFmzw8luY043pWFJhh2ZMm4IwxXoHXxNoGdlhD4Ym6+CCmkAvCglg0FK8dMLzAb+/XabmOE7Rbm8KZb6NZg=="],
 
     "expo-asset": ["expo-asset@11.1.4", "", { "dependencies": { "@expo/image-utils": "^0.7.4", "expo-constants": "~17.1.4" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-e3210sF0YHKRTCjVUOVmDAJ0Dk4vepL9RocKe36S7S+VthoCZwsBGLAM2LLvBa1SdmODF92AS0Nrcfi/1/VlbQ=="],
@@ -953,6 +958,8 @@
     "expo-modules-core": ["expo-modules-core@2.3.12", "", { "dependencies": { "invariant": "^2.2.4" } }, "sha512-bOm83mskw1S7xuDX50DlLdx68u0doQ6BZHSU2qTv8P1/5QYeAae3pCgFLq2hoptUNeMF7W+68ShJFTOHAe68BQ=="],
 
     "expo-router": ["expo-router@5.0.3", "", { "dependencies": { "@expo/metro-runtime": "5.0.4", "@expo/server": "^0.6.2", "@radix-ui/react-slot": "1.2.0", "@react-navigation/bottom-tabs": "^7.3.10", "@react-navigation/native": "^7.1.6", "@react-navigation/native-stack": "^7.3.10", "client-only": "^0.0.1", "invariant": "^2.2.4", "react-fast-compare": "^3.2.2", "react-native-is-edge-to-edge": "^1.1.6", "schema-utils": "^4.0.1", "semver": "~7.6.3", "server-only": "^0.0.1", "shallowequal": "^1.1.0" }, "peerDependencies": { "@react-navigation/drawer": "^7.3.9", "expo": "*", "expo-constants": "*", "expo-linking": "*", "react-native-reanimated": "*", "react-native-safe-area-context": "*", "react-native-screens": "*" }, "optionalPeers": ["@react-navigation/drawer", "react-native-reanimated"] }, "sha512-DLoaEBAMEYuMctaGh/Lx43EwnpHapRRa0Eo3Z7FxQhIjS/SzN/yTGMzLtL/GVp+WTDFC/t8clFJUdhISQyal7Q=="],
+
+    "expo-secure-store": ["expo-secure-store@14.2.4", "", { "peerDependencies": { "expo": "*" } }, "sha512-ePaz4fnTitJJZjAiybaVYGfLWWyaEtepZC+vs9ZBMhQMfG5HUotIcVsDaSo3FnwpHmgwsLVPY2qFeryI6AtULw=="],
 
     "expo-splash-screen": ["expo-splash-screen@0.30.7", "", { "dependencies": { "@expo/prebuild-config": "^9.0.3" }, "peerDependencies": { "expo": "*" } }, "sha512-rMMJC43bSqn4cNWsbilIodnCjnWXWLWNHSEvuyhiIg2UciV7bp2PKb6AuFqMdzjG4lmdM9ANn52AQaYnAaZoAQ=="],
 

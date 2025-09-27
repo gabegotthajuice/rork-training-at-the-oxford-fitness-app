@@ -1,22 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
 import createContextHook from '@nkzw/create-context-hook';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface User {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: 'client' | 'trainer';
   profileImage?: string;
   trainerId?: string;
   createdAt: string;
   lastLogin: string;
+  authProvider?: 'google' | 'apple' | 'squarespace' | 'email';
+  squarespaceCustomerId?: string;
   subscription?: {
     plan: string;
     status: string;
     expiresAt: string;
+  };
+  profile?: {
+    phone?: string;
+    dateOfBirth?: string;
+    height?: number;
+    currentWeight?: number;
+    targetWeight?: number;
+    fitnessGoals?: string[];
+    medicalConditions?: string[];
   };
 }
 
@@ -26,9 +44,40 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   token: string | null;
+  hasCompletedOnboarding: boolean;
+  hasCompletedProfileSetup: boolean;
 }
 
-const AUTH_API_URL = 'https://toolkit.rork.com/text/llm/';
+// OAuth Configuration
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+const SQUARESPACE_CLIENT_ID = process.env.EXPO_PUBLIC_SQUARESPACE_CLIENT_ID || '';
+
+// Secure storage helpers
+const secureStorage = {
+  async setItem(key: string, value: string) {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    } else {
+      return await SecureStore.getItemAsync(key);
+    }
+  },
+  async removeItem(key: string) {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+  },
+};
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -38,6 +87,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     isLoading: true,
     error: null,
     token: null,
+    hasCompletedOnboarding: false,
+    hasCompletedProfileSetup: false,
   });
 
   // Load stored auth data on mount
@@ -47,34 +98,38 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadStoredAuth = async () => {
     try {
-      const [token, userData] = await Promise.all([
-        AsyncStorage.getItem('authToken'),
+      const [token, userData, onboardingStatus, profileStatus] = await Promise.all([
+        secureStorage.getItem('authToken'),
         AsyncStorage.getItem('userData'),
+        AsyncStorage.getItem('onboardingCompleted'),
+        AsyncStorage.getItem('profileSetupCompleted'),
       ]);
 
       if (token && userData) {
         try {
-          // AsyncStorage always returns strings, safely parse
           let user: User;
           if (typeof userData === 'string') {
             user = JSON.parse(userData);
           } else {
-            // This shouldn't happen with AsyncStorage, but handle it
             console.warn('Unexpected non-string userData from AsyncStorage');
             user = userData as User;
           }
+          
           setAuthState({
             user,
             isAuthenticated: true,
             isLoading: false,
             error: null,
             token,
+            hasCompletedOnboarding: onboardingStatus === 'true',
+            hasCompletedProfileSetup: profileStatus === 'true',
           });
         } catch (parseError) {
           console.error('Error parsing user data:', parseError);
-          // Clear corrupted data
-          await AsyncStorage.removeItem('userData');
-          await AsyncStorage.removeItem('authToken');
+          await Promise.all([
+            AsyncStorage.removeItem('userData'),
+            secureStorage.removeItem('authToken'),
+          ]);
           setAuthState(prev => ({ ...prev, isLoading: false }));
         }
       } else {
@@ -86,55 +141,84 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   };
 
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      // Simulate API call - replace with actual backend
-      const response = await fetch(AUTH_API_URL, {
+  // Google OAuth
+  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri: AuthSession.makeRedirectUri(),
+    },
+    { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
+  );
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      handleGoogleAuth(googleResponse.params.code);
+    }
+  }, [googleResponse]);
+
+  const handleGoogleAuth = async (code: string) => {
+    try {
+      // Exchange code for tokens and user info
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            role: 'system',
-            content: 'Simulate user authentication. Return success with user data.'
-          }, {
-            role: 'user',
-            content: `Login attempt: ${email}`
-          }]
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GOOGLE_CLIENT_ID,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: AuthSession.makeRedirectUri(),
         }),
       });
 
-      if (!response.ok) throw new Error('Login failed');
+      const tokens = await tokenResponse.json();
+      
+      // Get user info
+      const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      
+      const googleUser = await userResponse.json();
+      
+      const user: User = {
+        id: `google_${googleUser.id}`,
+        email: googleUser.email,
+        name: googleUser.name,
+        firstName: googleUser.given_name,
+        lastName: googleUser.family_name,
+        profileImage: googleUser.picture,
+        role: 'client',
+        authProvider: 'google',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
 
-      // Mock user data - replace with actual response
+      await saveAuthData(user, tokens.access_token);
+    } catch (error) {
+      console.error('Google auth error:', error);
+      setAuthState(prev => ({ ...prev, error: 'Google authentication failed' }));
+    }
+  };
+
+  const loginMutation = useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      // Mock authentication - replace with actual backend
       const mockUser: User = {
         id: `user_${Date.now()}`,
         email,
         name: email.split('@')[0],
         role: email.includes('trainer') ? 'trainer' : 'client',
+        authProvider: 'email',
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       };
 
       const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
       return { user: mockUser, token: mockToken };
     },
     onSuccess: async ({ user, token }) => {
-      await Promise.all([
-        AsyncStorage.setItem('authToken', token),
-        AsyncStorage.setItem('userData', JSON.stringify(user)),
-        AsyncStorage.setItem('userRole', user.role),
-      ]);
-
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        token,
-      });
-
-      queryClient.invalidateQueries();
+      await saveAuthData(user, token);
     },
     onError: (error) => {
       setAuthState(prev => ({
@@ -152,52 +236,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       name: string;
       role: 'client' | 'trainer';
     }) => {
-      // Simulate API call
-      const response = await fetch(AUTH_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            role: 'system',
-            content: 'Simulate user registration. Return success with new user data.'
-          }, {
-            role: 'user',
-            content: `Register: ${email}, ${name}, ${role}`
-          }]
-        }),
-      });
-
-      if (!response.ok) throw new Error('Signup failed');
-
       const newUser: User = {
         id: `user_${Date.now()}`,
         email,
         name,
         role,
+        authProvider: 'email',
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       };
 
       const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
       return { user: newUser, token };
     },
     onSuccess: async ({ user, token }) => {
-      await Promise.all([
-        AsyncStorage.setItem('authToken', token),
-        AsyncStorage.setItem('userData', JSON.stringify(user)),
-        AsyncStorage.setItem('userRole', user.role),
-      ]);
-
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        token,
-      });
-
-      queryClient.invalidateQueries();
+      await saveAuthData(user, token);
     },
     onError: (error) => {
       setAuthState(prev => ({
@@ -208,12 +261,129 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     },
   });
 
+  // Save auth data helper
+  const saveAuthData = async (user: User, token: string) => {
+    const [onboardingStatus, profileStatus] = await Promise.all([
+      AsyncStorage.getItem('onboardingCompleted'),
+      AsyncStorage.getItem('profileSetupCompleted'),
+    ]);
+
+    await Promise.all([
+      secureStorage.setItem('authToken', token),
+      AsyncStorage.setItem('userData', JSON.stringify(user)),
+      AsyncStorage.setItem('userRole', user.role),
+    ]);
+
+    setAuthState({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      token,
+      hasCompletedOnboarding: onboardingStatus === 'true',
+      hasCompletedProfileSetup: profileStatus === 'true',
+    });
+
+    queryClient.invalidateQueries();
+  };
+
+  // Apple Sign-In
+  const signInWithApple = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const user: User = {
+        id: `apple_${credential.user}`,
+        email: credential.email || '',
+        name: credential.fullName ? 
+          `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : 
+          'Apple User',
+        firstName: credential.fullName?.givenName || undefined,
+        lastName: credential.fullName?.familyName || undefined,
+        role: 'client',
+        authProvider: 'apple',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+
+      await saveAuthData(user, credential.identityToken || '');
+    } catch (error: any) {
+      if (error.code === 'ERR_CANCELED') {
+        // User canceled
+        return;
+      }
+      console.error('Apple Sign-In error:', error);
+      setAuthState(prev => ({ ...prev, error: 'Apple Sign-In failed' }));
+    }
+  };
+
+  // Squarespace OAuth
+  const signInWithSquarespace = async () => {
+    try {
+      const redirectUri = AuthSession.makeRedirectUri();
+      const state = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        Math.random().toString(),
+        { encoding: Crypto.CryptoEncoding.HEX }
+      );
+
+      const authUrl = `https://login.squarespace.com/api/1/login/oauth/provider/authorize?` +
+        `client_id=${SQUARESPACE_CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=website.read,website.orders&` +
+        `state=${state}&` +
+        `response_type=code`;
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+        
+        if (code) {
+          await handleSquarespaceAuth(code);
+        }
+      }
+    } catch (error) {
+      console.error('Squarespace auth error:', error);
+      setAuthState(prev => ({ ...prev, error: 'Squarespace authentication failed' }));
+    }
+  };
+
+  const handleSquarespaceAuth = async (code: string) => {
+    try {
+      // Exchange code for access token and get user info
+      // This would typically be done through your backend
+      const user: User = {
+        id: `squarespace_${Date.now()}`,
+        email: 'squarespace@example.com', // Get from Squarespace API
+        name: 'Squarespace User',
+        role: 'client',
+        authProvider: 'squarespace',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+
+      await saveAuthData(user, code);
+    } catch (error) {
+      console.error('Squarespace token exchange error:', error);
+      setAuthState(prev => ({ ...prev, error: 'Squarespace authentication failed' }));
+    }
+  };
+
   const logout = async () => {
     try {
       await Promise.all([
-        AsyncStorage.removeItem('authToken'),
+        secureStorage.removeItem('authToken'),
         AsyncStorage.removeItem('userData'),
         AsyncStorage.removeItem('userRole'),
+        AsyncStorage.removeItem('onboardingCompleted'),
+        AsyncStorage.removeItem('profileSetupCompleted'),
       ]);
 
       setAuthState({
@@ -222,6 +392,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isLoading: false,
         error: null,
         token: null,
+        hasCompletedOnboarding: false,
+        hasCompletedProfileSetup: false,
       });
 
       queryClient.clear();
@@ -259,26 +431,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const syncWithTrainer = async (trainerId: string) => {
     try {
-      // Simulate syncing with trainer's account
-      const response = await fetch(AUTH_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authState.token}`,
-        },
-        body: JSON.stringify({
-          messages: [{
-            role: 'system',
-            content: 'Sync client data with trainer account.'
-          }, {
-            role: 'user',
-            content: `Link client ${authState.user?.id} with trainer ${trainerId}`
-          }]
-        }),
-      });
-
-      if (!response.ok) throw new Error('Sync failed');
-      
+      // Sync with backend through tRPC
+      // This would be implemented in your backend
+      console.log(`Syncing client ${authState.user?.id} with trainer ${trainerId}`);
       return true;
     } catch (error) {
       console.error('Sync error:', error);
@@ -286,15 +441,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   };
 
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem('onboardingCompleted', 'true');
+    setAuthState(prev => ({ ...prev, hasCompletedOnboarding: true }));
+  };
+
+  const completeProfileSetup = async () => {
+    await AsyncStorage.setItem('profileSetupCompleted', 'true');
+    setAuthState(prev => ({ ...prev, hasCompletedProfileSetup: true }));
+  };
+
+  // Check if Apple Sign-In is available
+  const [isAppleSignInAvailable, setIsAppleSignInAvailable] = useState(false);
+  
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setIsAppleSignInAvailable);
+    }
+  }, []);
+
   return {
     ...authState,
     login: loginMutation.mutate,
     signup: signupMutation.mutate,
+    signInWithGoogle: googlePromptAsync,
+    signInWithApple,
+    signInWithSquarespace,
     logout,
     updateProfile,
     linkTrainer,
+    completeOnboarding,
+    completeProfileSetup,
     isLoginLoading: loginMutation.isPending,
     isSignupLoading: signupMutation.isPending,
+    isAppleSignInAvailable,
     loginError: loginMutation.error?.message,
     signupError: signupMutation.error?.message,
   };
