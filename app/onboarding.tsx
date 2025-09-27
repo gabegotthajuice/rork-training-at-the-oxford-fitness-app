@@ -489,24 +489,28 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.stepContent}>
             <Smartphone size={48} color="#FFD700" />
-            <Text style={styles.stepTitle}>Health App Integration</Text>
+            <Text style={styles.stepTitle}>Device Integration</Text>
             <Text style={styles.stepDescription}>
-              Connect your health app to automatically track sleep, steps, and other vital metrics
+              Connect health apps, fitness trackers, and smart scales for automatic data sync
             </Text>
             
             <View style={styles.healthIntegrationContainer}>
               <View style={styles.healthBenefits}>
                 <View style={styles.benefitItem}>
-                  <Moon size={20} color="#8A2BE2" />
-                  <Text style={styles.benefitText}>Automatic sleep tracking</Text>
+                  <Smartphone size={20} color="#FF3B30" />
+                  <Text style={styles.benefitText}>Apple Health & Google Fit</Text>
                 </View>
                 <View style={styles.benefitItem}>
-                  <Activity size={20} color="#00FF00" />
-                  <Text style={styles.benefitText}>Daily step counting</Text>
+                  <Activity size={20} color="#00B0B9" />
+                  <Text style={styles.benefitText}>Fitbit & wearable devices</Text>
                 </View>
                 <View style={styles.benefitItem}>
-                  <TrendingUp size={20} color="#FF00FF" />
-                  <Text style={styles.benefitText}>Heart rate monitoring</Text>
+                  <TrendingUp size={20} color="#9C27B0" />
+                  <Text style={styles.benefitText}>StarFit & smart scales</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Activity size={20} color="#0066CC" />
+                  <Text style={styles.benefitText}>MyFitnessPal nutrition data</Text>
                 </View>
               </View>
               
@@ -536,13 +540,32 @@ export default function OnboardingScreen() {
                     </Text>
                   </View>
                 )
+              ) : Platform.OS === 'android' ? (
+                <TouchableOpacity 
+                  style={[styles.healthConnectButton, { backgroundColor: '#4285F4' }]}
+                  onPress={() => console.log('Google Fit integration')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.healthConnectGradient}>
+                    <Link2 size={20} color="#FFFFFF" />
+                    <Text style={styles.healthConnectButtonText}>Connect Google Fit</Text>
+                  </View>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.healthUnavailableContainer}>
                   <Text style={styles.healthUnavailableText}>
-                    Health app integration will be available after setup
+                    Device integrations will be available after setup
                   </Text>
                 </View>
               )}
+              
+              <TouchableOpacity 
+                style={styles.moreDevicesButton}
+                onPress={() => router.push('/device-integration')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.moreDevicesText}>View All Device Integrations</Text>
+              </TouchableOpacity>
               
               <TouchableOpacity 
                 style={styles.skipHealthButton}
@@ -951,5 +974,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textDecorationLine: 'underline',
+  },
+  moreDevicesButton: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    backgroundColor: 'transparent',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  moreDevicesText: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: '600',
   },
 });

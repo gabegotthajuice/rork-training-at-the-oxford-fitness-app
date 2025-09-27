@@ -797,6 +797,31 @@ export default function DashboardScreen() {
           </LinearGradient>
         </View>
 
+        {/* Device Integration Card */}
+        <TouchableOpacity 
+          style={styles.deviceIntegrationCard}
+          onPress={() => router.push('/device-integration')}
+          activeOpacity={0.7}
+        >
+          <LinearGradient
+            colors={['rgba(76,175,80,0.1)', 'rgba(0,0,0,0.95)']}
+            style={styles.deviceIntegrationGradient}
+          >
+            <View style={styles.deviceIntegrationContent}>
+              <View style={styles.deviceIntegrationIcon}>
+                <Link2 size={24} color="#4CAF50" />
+              </View>
+              <View style={styles.deviceIntegrationTextContainer}>
+                <Text style={styles.deviceIntegrationTitle}>DEVICE INTEGRATIONS</Text>
+                <Text style={styles.deviceIntegrationSubtitle}>
+                  Connect StarFit scales, Fitbit, MyFitnessPal & more
+                </Text>
+              </View>
+              <ChevronRight size={20} color="#4CAF50" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Data Input Section */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLine} />
@@ -2066,6 +2091,48 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: 'rgba(255,255,255,0.4)',
     textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  deviceIntegrationCard: {
+    marginHorizontal: 20,
+    marginBottom: 30,
+    height: 80,
+    borderRadius: 0,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(76,175,80,0.3)',
+  },
+  deviceIntegrationGradient: {
+    flex: 1,
+    padding: 20,
+  },
+  deviceIntegrationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  deviceIntegrationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(76,175,80,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deviceIntegrationTextContainer: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  deviceIntegrationTitle: {
+    fontSize: 12,
+    fontWeight: '300',
+    color: '#4CAF50',
+    letterSpacing: 2,
+    marginBottom: 5,
+  },
+  deviceIntegrationSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
     letterSpacing: 0.5,
   },
 });
