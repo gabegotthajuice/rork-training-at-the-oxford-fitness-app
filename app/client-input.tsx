@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Save, User, Target, Activity, Heart } from 'lucide-react-native';
+import { ChevronLeft, Save, User, Target, Activity, Heart, Droplets, Moon, Utensils, TrendingUp } from 'lucide-react-native';
 import { useClient } from '@/providers/ClientProvider';
 import { useCloudSync } from '@/providers/CloudSyncProvider';
 
@@ -34,9 +34,31 @@ export default function ClientInputScreen() {
     meals: clientData.dailyMetrics?.meals?.toString() || '',
     calories: clientData.dailyMetrics?.calories?.toString() || '',
     
+    // Enhanced Daily Tracking
+    protein: '',
+    carbs: '',
+    fats: '',
+    steps: '',
+    workoutDuration: '',
+    workoutType: '',
+    energyLevel: '5',
+    mood: '5',
+    stressLevel: '3',
+    hydrationGoal: '64',
+    sleepQuality: '5',
+    
+    // Progress Stats
+    bodyFat: '',
+    muscleMass: '',
+    waistMeasurement: '',
+    chestMeasurement: '',
+    armMeasurement: '',
+    legMeasurement: '',
+    
     // Goals
     goals: clientData.identity?.goals?.join('\n') || '',
     lifestyleNotes: clientData.identity?.lifestyleNotes || '',
+    todaysNotes: '',
   });
 
   const handleSave = async () => {
@@ -103,7 +125,7 @@ export default function ClientInputScreen() {
                 style={styles.input}
                 value={formData.height}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, height: text }))}
-                placeholder="e.g., 5'10"
+                placeholder="e.g., 5&apos;10"
               />
             </View>
 
@@ -133,51 +155,252 @@ export default function ClientInputScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Activity size={20} color="#666" />
-              <Text style={styles.sectionTitle}>Today's Metrics</Text>
+              <Text style={styles.sectionTitle}>Today&apos;s Metrics</Text>
             </View>
 
             <View style={styles.metricsGrid}>
               <View style={styles.metricItem}>
+                <Droplets size={16} color="#4FC3F7" />
                 <Text style={styles.label}>Water (oz)</Text>
                 <TextInput
                   style={styles.metricInput}
                   value={formData.water}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, water: text }))}
-                  placeholder="0"
+                  placeholder={formData.hydrationGoal}
                   keyboardType="numeric"
                 />
               </View>
 
               <View style={styles.metricItem}>
+                <Moon size={16} color="#9C27B0" />
                 <Text style={styles.label}>Sleep (hrs)</Text>
                 <TextInput
                   style={styles.metricInput}
                   value={formData.sleep}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, sleep: text }))}
-                  placeholder="0"
+                  placeholder="8"
                   keyboardType="numeric"
                 />
               </View>
 
               <View style={styles.metricItem}>
+                <Utensils size={16} color="#FF9800" />
                 <Text style={styles.label}>Meals</Text>
                 <TextInput
                   style={styles.metricInput}
                   value={formData.meals}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, meals: text }))}
-                  placeholder="0"
+                  placeholder="3"
                   keyboardType="numeric"
                 />
               </View>
 
               <View style={styles.metricItem}>
+                <TrendingUp size={16} color="#4CAF50" />
                 <Text style={styles.label}>Calories</Text>
                 <TextInput
                   style={styles.metricInput}
                   value={formData.calories}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, calories: text }))}
-                  placeholder="0"
+                  placeholder="2000"
                   keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Protein (g)</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.protein}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, protein: text }))}
+                  placeholder="150"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Steps</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.steps}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, steps: text }))}
+                  placeholder="10000"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Workout Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Activity size={20} color="#666" />
+              <Text style={styles.sectionTitle}>Today&apos;s Workout</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Workout Type</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.workoutType}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, workoutType: text }))}
+                placeholder="e.g., Upper Body, Cardio, Legs"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Duration (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.workoutDuration}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, workoutDuration: text }))}
+                placeholder="45"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          {/* Wellness Tracking */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Heart size={20} color="#666" />
+              <Text style={styles.sectionTitle}>Wellness Check</Text>
+            </View>
+
+            <View style={styles.sliderSection}>
+              <Text style={styles.label}>Energy Level (1-10): {formData.energyLevel}</Text>
+              <View style={styles.sliderContainer}>
+                {[1,2,3,4,5,6,7,8,9,10].map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.sliderButton,
+                      parseInt(formData.energyLevel) === num && styles.sliderButtonActive
+                    ]}
+                    onPress={() => setFormData(prev => ({ ...prev, energyLevel: num.toString() }))}
+                  >
+                    <Text style={[
+                      styles.sliderButtonText,
+                      parseInt(formData.energyLevel) === num && styles.sliderButtonTextActive
+                    ]}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.sliderSection}>
+              <Text style={styles.label}>Mood (1-10): {formData.mood}</Text>
+              <View style={styles.sliderContainer}>
+                {[1,2,3,4,5,6,7,8,9,10].map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.sliderButton,
+                      parseInt(formData.mood) === num && styles.sliderButtonActive
+                    ]}
+                    onPress={() => setFormData(prev => ({ ...prev, mood: num.toString() }))}
+                  >
+                    <Text style={[
+                      styles.sliderButtonText,
+                      parseInt(formData.mood) === num && styles.sliderButtonTextActive
+                    ]}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.sliderSection}>
+              <Text style={styles.label}>Sleep Quality (1-10): {formData.sleepQuality}</Text>
+              <View style={styles.sliderContainer}>
+                {[1,2,3,4,5,6,7,8,9,10].map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.sliderButton,
+                      parseInt(formData.sleepQuality) === num && styles.sliderButtonActive
+                    ]}
+                    onPress={() => setFormData(prev => ({ ...prev, sleepQuality: num.toString() }))}
+                  >
+                    <Text style={[
+                      styles.sliderButtonText,
+                      parseInt(formData.sleepQuality) === num && styles.sliderButtonTextActive
+                    ]}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Progress Measurements */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <TrendingUp size={20} color="#666" />
+              <Text style={styles.sectionTitle}>Progress Measurements</Text>
+            </View>
+
+            <View style={styles.metricsGrid}>
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Body Fat %</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.bodyFat}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, bodyFat: text }))}
+                  placeholder="15.5"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Muscle Mass</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.muscleMass}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, muscleMass: text }))}
+                  placeholder="150 lbs"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Waist (in)</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.waistMeasurement}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, waistMeasurement: text }))}
+                  placeholder="32"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Chest (in)</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.chestMeasurement}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, chestMeasurement: text }))}
+                  placeholder="42"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Arms (in)</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.armMeasurement}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, armMeasurement: text }))}
+                  placeholder="15"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.metricItem}>
+                <Text style={styles.label}>Legs (in)</Text>
+                <TextInput
+                  style={styles.metricInput}
+                  value={formData.legMeasurement}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, legMeasurement: text }))}
+                  placeholder="24"
+                  keyboardType="decimal-pad"
                 />
               </View>
             </View>
@@ -213,6 +436,18 @@ export default function ClientInputScreen() {
                 numberOfLines={4}
               />
             </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Today&apos;s Notes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.todaysNotes}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, todaysNotes: text }))}
+                placeholder="How are you feeling today? Any challenges or wins?"
+                multiline
+                numberOfLines={3}
+              />
+            </View>
           </View>
 
           {/* Sync Status */}
@@ -223,7 +458,7 @@ export default function ClientInputScreen() {
             </Text>
           </View>
 
-          <View style={{ height: 50 }} />
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -307,6 +542,7 @@ const styles = StyleSheet.create({
     width: '50%',
     paddingHorizontal: 5,
     marginBottom: 15,
+    alignItems: 'center',
   },
   metricInput: {
     borderWidth: 1,
@@ -334,5 +570,39 @@ const styles = StyleSheet.create({
   syncText: {
     fontSize: 12,
     color: '#666',
+  },
+  sliderSection: {
+    marginBottom: 20,
+  },
+  sliderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingHorizontal: 5,
+  },
+  sliderButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  sliderButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  sliderButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  sliderButtonTextActive: {
+    color: '#fff',
+  },
+  bottomSpacer: {
+    height: 50,
   },
 });

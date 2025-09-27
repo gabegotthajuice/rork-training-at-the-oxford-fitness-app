@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, User, Target, Activity, Clock, Utensils } from 'lucide-react-native';
+import { ChevronRight, User, Target, Activity, Clock, Utensils, Droplets, Moon, TrendingUp } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -35,12 +35,25 @@ export default function OnboardingScreen() {
     breakfast_time: '08:00',
     lunch_time: '12:00',
     dinner_time: '18:00',
+    // New fields for comprehensive intake
+    sleep_hours: 8,
+    water_intake_oz: 64,
+    activity_level: 'moderate',
+    medical_conditions: '',
+    medications: '',
+    allergies: '',
+    preferred_workout_time: 'morning',
+    workout_frequency: 3,
+    stress_level: 'medium',
+    body_fat_percentage: '',
+    target_weight: '',
+    timeline_weeks: 12,
   });
   
   const submitIntake = trpc.oxford.submitIntake.useMutation();
 
   const handleNext = async () => {
-    if (step < 4) {
+    if (step < 6) {
       setStep(step + 1);
     } else {
       // Submit intake form
@@ -64,6 +77,18 @@ export default function OnboardingScreen() {
           breakfast_time: formData.breakfast_time,
           lunch_time: formData.lunch_time,
           dinner_time: formData.dinner_time,
+          sleep_hours: formData.sleep_hours,
+          water_intake_oz: formData.water_intake_oz,
+          activity_level: formData.activity_level,
+          medical_conditions: formData.medical_conditions,
+          medications: formData.medications,
+          allergies: formData.allergies,
+          preferred_workout_time: formData.preferred_workout_time,
+          workout_frequency: formData.workout_frequency,
+          stress_level: formData.stress_level,
+          body_fat_percentage: formData.body_fat_percentage,
+          target_weight: formData.target_weight,
+          timeline_weeks: formData.timeline_weeks,
           start_date: new Date().toISOString().split('T')[0]
         });
         
@@ -263,6 +288,198 @@ export default function OnboardingScreen() {
           </View>
         );
       
+      case 5:
+        return (
+          <View style={styles.stepContent}>
+            <Droplets size={48} color="#FFD700" />
+            <Text style={styles.stepTitle}>Daily Habits</Text>
+            <Text style={styles.stepDescription}>
+              Tell us about your daily routine
+            </Text>
+            
+            <View style={styles.habitSection}>
+              <View style={styles.habitRow}>
+                <Moon size={20} color="#666" />
+                <Text style={styles.habitLabel}>Sleep Hours:</Text>
+                <TextInput
+                  style={styles.habitInput}
+                  placeholder="8"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                  value={String(formData.sleep_hours)}
+                  onChangeText={(text) => setFormData({ ...formData, sleep_hours: parseInt(text) || 8 })}
+                />
+              </View>
+              
+              <View style={styles.habitRow}>
+                <Droplets size={20} color="#666" />
+                <Text style={styles.habitLabel}>Water Intake (oz):</Text>
+                <TextInput
+                  style={styles.habitInput}
+                  placeholder="64"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                  value={String(formData.water_intake_oz)}
+                  onChangeText={(text) => setFormData({ ...formData, water_intake_oz: parseInt(text) || 64 })}
+                />
+              </View>
+              
+              <View style={styles.habitRow}>
+                <Activity size={20} color="#666" />
+                <Text style={styles.habitLabel}>Activity Level:</Text>
+                <View style={styles.activityButtons}>
+                  {['low', 'moderate', 'high'].map((level) => (
+                    <TouchableOpacity
+                      key={level}
+                      style={[
+                        styles.activityButton,
+                        formData.activity_level === level && styles.activityButtonActive
+                      ]}
+                      onPress={() => setFormData({ ...formData, activity_level: level })}
+                    >
+                      <Text style={[
+                        styles.activityButtonText,
+                        formData.activity_level === level && styles.activityButtonTextActive
+                      ]}>
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View style={styles.habitRow}>
+                <Clock size={20} color="#666" />
+                <Text style={styles.habitLabel}>Preferred Workout Time:</Text>
+                <View style={styles.activityButtons}>
+                  {['morning', 'afternoon', 'evening'].map((time) => (
+                    <TouchableOpacity
+                      key={time}
+                      style={[
+                        styles.activityButton,
+                        formData.preferred_workout_time === time && styles.activityButtonActive
+                      ]}
+                      onPress={() => setFormData({ ...formData, preferred_workout_time: time })}
+                    >
+                      <Text style={[
+                        styles.activityButtonText,
+                        formData.preferred_workout_time === time && styles.activityButtonTextActive
+                      ]}>
+                        {time.charAt(0).toUpperCase() + time.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View style={styles.habitRow}>
+                <TrendingUp size={20} color="#666" />
+                <Text style={styles.habitLabel}>Workouts per Week:</Text>
+                <TextInput
+                  style={styles.habitInput}
+                  placeholder="3"
+                  placeholderTextColor="#999"
+                  keyboardType="number-pad"
+                  value={String(formData.workout_frequency)}
+                  onChangeText={(text) => setFormData({ ...formData, workout_frequency: parseInt(text) || 3 })}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      
+      case 6:
+        return (
+          <View style={styles.stepContent}>
+            <Target size={48} color="#FFD700" />
+            <Text style={styles.stepTitle}>Health & Progress</Text>
+            <Text style={styles.stepDescription}>
+              Help us track your progress effectively
+            </Text>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Target Weight (lbs)"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+              value={formData.target_weight}
+              onChangeText={(text) => setFormData({ ...formData, target_weight: text })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Body Fat % (if known)"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+              value={formData.body_fat_percentage}
+              onChangeText={(text) => setFormData({ ...formData, body_fat_percentage: text })}
+            />
+            
+            <View style={styles.targetRow}>
+              <Text style={styles.targetLabel}>Timeline (weeks):</Text>
+              <TextInput
+                style={styles.targetInput}
+                placeholder="12"
+                placeholderTextColor="#999"
+                keyboardType="number-pad"
+                value={String(formData.timeline_weeks)}
+                onChangeText={(text) => setFormData({ ...formData, timeline_weeks: parseInt(text) || 12 })}
+              />
+            </View>
+            
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Medical conditions or injuries..."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              value={formData.medical_conditions}
+              onChangeText={(text) => setFormData({ ...formData, medical_conditions: text })}
+            />
+            
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Current medications..."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              value={formData.medications}
+              onChangeText={(text) => setFormData({ ...formData, medications: text })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Food allergies or dietary restrictions"
+              placeholderTextColor="#999"
+              value={formData.allergies}
+              onChangeText={(text) => setFormData({ ...formData, allergies: text })}
+            />
+            
+            <View style={styles.stressSection}>
+              <Text style={styles.sectionLabel}>Current Stress Level</Text>
+              <View style={styles.stressButtons}>
+                {['low', 'medium', 'high'].map((level) => (
+                  <TouchableOpacity
+                    key={level}
+                    style={[
+                      styles.stressButton,
+                      formData.stress_level === level && styles.stressButtonActive
+                    ]}
+                    onPress={() => setFormData({ ...formData, stress_level: level })}
+                  >
+                    <Text style={[
+                      styles.stressButtonText,
+                      formData.stress_level === level && styles.stressButtonTextActive
+                    ]}>
+                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        );
+      
       default:
         return null;
     }
@@ -282,7 +499,7 @@ export default function OnboardingScreen() {
 
         {/* Progress Indicator */}
         <View style={styles.progressContainer}>
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <View
               key={i}
               style={[
@@ -322,7 +539,7 @@ export default function OnboardingScreen() {
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
-                    {step === 4 ? 'Complete Setup' : 'Next'}
+                    {step === 6 ? 'Complete Setup' : 'Next'}
                   </Text>
                   <ChevronRight size={20} color="#001F3F" />
                 </>
@@ -491,5 +708,85 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#001F3F',
     textAlign: 'center',
+  },
+  habitSection: {
+    width: '100%',
+    marginTop: 20,
+  },
+  habitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 10,
+  },
+  habitLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: '#666',
+  },
+  habitInput: {
+    width: 80,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 16,
+    color: '#001F3F',
+    textAlign: 'center',
+  },
+  activityButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  activityButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#F5F5F5',
+  },
+  activityButtonActive: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
+  },
+  activityButtonText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  activityButtonTextActive: {
+    color: '#001F3F',
+    fontWeight: '600',
+  },
+  stressSection: {
+    width: '100%',
+    marginTop: 20,
+  },
+  stressButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  stressButton: {
+    flex: 1,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  stressButtonActive: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
+  },
+  stressButtonText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  stressButtonTextActive: {
+    color: '#001F3F',
+    fontWeight: '600',
   },
 });
