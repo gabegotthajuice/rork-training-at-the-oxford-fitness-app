@@ -322,7 +322,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   };
 
-  // Squarespace OAuth
+  // Squarespace OAuth - Links account for package/session tracking
   const signInWithSquarespace = async () => {
     try {
       const redirectUri = AuthSession.makeRedirectUri();
@@ -335,7 +335,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const authUrl = `https://login.squarespace.com/api/1/login/oauth/provider/authorize?` +
         `client_id=${SQUARESPACE_CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=website.read,website.orders&` +
+        `scope=website.read,website.orders,commerce.read&` +
         `state=${state}&` +
         `response_type=code`;
 
@@ -357,19 +357,58 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const handleSquarespaceAuth = async (code: string) => {
     try {
-      // Exchange code for access token and get user info
-      // This would typically be done through your backend
+      // Exchange code for access token
+      const tokenResponse = await fetch('https://login.squarespace.com/api/1/login/oauth/provider/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: SQUARESPACE_CLIENT_ID,
+          client_secret: process.env.EXPO_PUBLIC_SQUARESPACE_CLIENT_SECRET || '',
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: AuthSession.makeRedirectUri(),
+        }),
+      });
+
+      const tokens = await tokenResponse.json();
+      
+      // Get user info and subscription data from Squarespace
+      const userResponse = await fetch('https://api.squarespace.com/1.0/authorization/website', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      
+      const squarespaceData = await userResponse.json();
+      
+      // Get customer orders/subscriptions for package tracking
+      const ordersResponse = await fetch('https://api.squarespace.com/1.0/commerce/orders', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      
+      const ordersData = await ordersResponse.json();
+      
       const user: User = {
-        id: `squarespace_${Date.now()}`,
-        email: 'squarespace@example.com', // Get from Squarespace API
-        name: 'Squarespace User',
+        id: `squarespace_${squarespaceData.websiteId}`,
+        email: squarespaceData.ownerEmail || 'squarespace@example.com',
+        name: squarespaceData.title || 'Squarespace User',
         role: 'client',
         authProvider: 'squarespace',
+        squarespaceCustomerId: squarespaceData.websiteId,
+        subscription: {
+          plan: 'active',
+          status: 'active',
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+        },
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
       };
 
-      await saveAuthData(user, code);
+      await saveAuthData(user, tokens.access_token);
+      
+      // Store Squarespace customer data for package/session tracking
+      await AsyncStorage.setItem('squarespaceCustomerId', squarespaceData.websiteId);
+      await AsyncStorage.setItem('squarespaceOrders', JSON.stringify(ordersData.result || []));
+      
+      console.log('Squarespace account linked successfully for package tracking');
     } catch (error) {
       console.error('Squarespace token exchange error:', error);
       setAuthState(prev => ({ ...prev, error: 'Squarespace authentication failed' }));

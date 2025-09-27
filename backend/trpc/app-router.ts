@@ -26,10 +26,14 @@ import { getMealHistoryProcedure } from "@/backend/trpc/routes/oxford/get-meal-h
 import { createCheckoutProcedure } from "@/backend/trpc/routes/oxford/create-checkout/route";
 import { getSubscriptionProcedure } from "@/backend/trpc/routes/oxford/get-subscription/route";
 import { getIntakeStatusProcedure } from "@/backend/trpc/routes/oxford/get-intake-status/route";
+import { linkSquarespaceAccountProcedure } from "@/backend/trpc/routes/auth/link-squarespace-account/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
     hi: hiRoute,
+  }),
+  auth: createTRPCRouter({
+    linkSquarespaceAccount: linkSquarespaceAccountProcedure,
   }),
   payments: createTRPCRouter({
     createSquarespaceCheckout: createSquarespaceCheckoutProcedure,

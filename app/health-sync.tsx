@@ -196,33 +196,104 @@ export default function HealthSync() {
           </Text>
         </View>
         
-        {/* HealthKit Integration */}
-        {Platform.OS === 'ios' && isHealthKitAvailable && (
-          <View style={styles.healthKitCard}>
-            <View style={styles.healthKitHeader}>
-              <Smartphone size={24} color="#FF3B30" />
-              <Text style={styles.healthKitTitle}>Apple Health</Text>
+        {/* Health App Integration - Prominent Sleep Tracking */}
+        <View style={styles.healthAppSection}>
+          <Text style={styles.sectionTitle}>Health App Integration</Text>
+          <Text style={styles.sectionDescription}>
+            Connect your phone&apos;s health app for automatic sleep tracking and activity monitoring
+          </Text>
+          
+          {Platform.OS === 'ios' && isHealthKitAvailable && (
+            <View style={styles.healthKitCard}>
+              <View style={styles.healthKitHeader}>
+                <Smartphone size={24} color="#FF3B30" />
+                <View style={styles.healthKitInfo}>
+                  <Text style={styles.healthKitTitle}>Apple Health</Text>
+                  <Text style={styles.healthKitSubtitle}>Sleep tracking, steps, heart rate & more</Text>
+                </View>
+                {isAuthorized && (
+                  <View style={styles.connectedBadge}>
+                    <CheckCircle size={16} color="#4CAF50" />
+                    <Text style={styles.connectedText}>Connected</Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.healthBenefits}>
+                <View style={styles.benefitRow}>
+                  <Moon size={16} color="#3F51B5" />
+                  <Text style={styles.benefitText}>Automatic sleep tracking</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Activity size={16} color="#4CAF50" />
+                  <Text style={styles.benefitText}>Daily step counting</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Heart size={16} color="#E91E63" />
+                  <Text style={styles.benefitText}>Heart rate monitoring</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Flame size={16} color="#FF9800" />
+                  <Text style={styles.benefitText}>Active calories burned</Text>
+                </View>
+              </View>
+              
+              {isAuthorized ? (
+                <TouchableOpacity
+                  style={styles.healthKitButton}
+                  onPress={fetchFromHealthKit}
+                >
+                  <Text style={styles.healthKitButtonText}>Sync Latest Data</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.healthKitButton, styles.healthKitButtonPrimary]}
+                  onPress={requestAuthorization}
+                >
+                  <Text style={[styles.healthKitButtonText, styles.healthKitButtonTextPrimary]}>
+                    Connect Health App for Sleep Tracking
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-            
-            {isAuthorized ? (
-              <TouchableOpacity
-                style={styles.healthKitButton}
-                onPress={fetchFromHealthKit}
-              >
-                <Text style={styles.healthKitButtonText}>Sync from Health App</Text>
-              </TouchableOpacity>
-            ) : (
+          )}
+          
+          {Platform.OS === 'android' && (
+            <View style={styles.healthKitCard}>
+              <View style={styles.healthKitHeader}>
+                <Activity size={24} color="#4285F4" />
+                <View style={styles.healthKitInfo}>
+                  <Text style={styles.healthKitTitle}>Google Fit</Text>
+                  <Text style={styles.healthKitSubtitle}>Sleep tracking, workouts, steps & health metrics</Text>
+                </View>
+              </View>
+              
+              <View style={styles.healthBenefits}>
+                <View style={styles.benefitRow}>
+                  <Moon size={16} color="#3F51B5" />
+                  <Text style={styles.benefitText}>Sleep duration tracking</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Activity size={16} color="#4CAF50" />
+                  <Text style={styles.benefitText}>Workout detection</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <TrendingUp size={16} color="#9C27B0" />
+                  <Text style={styles.benefitText}>Activity goals</Text>
+                </View>
+              </View>
+              
               <TouchableOpacity
                 style={[styles.healthKitButton, styles.healthKitButtonPrimary]}
-                onPress={requestAuthorization}
+                onPress={() => console.log('Google Fit integration coming soon')}
               >
                 <Text style={[styles.healthKitButtonText, styles.healthKitButtonTextPrimary]}>
-                  Connect Health App
+                  Connect Google Fit for Sleep Tracking
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
+            </View>
+          )}
+        </View>
         
         {/* Metrics Grid */}
         <Text style={styles.sectionTitle}>Today&apos;s Metrics</Text>
@@ -370,10 +441,49 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  healthAppSection: {
+    marginBottom: 24,
+  },
+  healthKitInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
   healthKitTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  healthKitSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  connectedText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  healthBenefits: {
+    marginVertical: 12,
+    gap: 8,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  benefitText: {
+    fontSize: 14,
+    color: '#666',
   },
   healthKitButton: {
     paddingVertical: 10,
@@ -394,12 +504,19 @@ const styles = StyleSheet.create({
   },
   healthKitButtonTextPrimary: {
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 12,
+    marginBottom: 4,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 20,
   },
   metricsGrid: {
     gap: 12,
