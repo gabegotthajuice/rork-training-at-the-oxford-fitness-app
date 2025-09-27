@@ -36,11 +36,13 @@ import {
   Smartphone,
   CheckCircle,
   AlertCircle,
-  Package
+  Package,
+  Heart
 } from 'lucide-react-native';
 import { useClient } from '@/providers/ClientProvider';
 import { router } from 'expo-router';
 import { useAppMode } from '@/providers/AppModeProvider';
+import { useHealthKit } from '@/providers/HealthKitProvider';
 import Svg, { Path, Line, Circle, Text as SvgText, Defs, LinearGradient as SvgGradient, Stop, Polygon } from 'react-native-svg';
 import { trpc } from '@/lib/trpc';
 
@@ -49,6 +51,16 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function DashboardScreen() {
   const { clientData, updateDailyMetrics, addWeightEntry, getTodayMealCount, isLoading } = useClient();
   const { logout } = useAppMode();
+  const {
+    isHealthKitAvailable,
+    isAuthorized: isHealthKitAuthorized,
+    requestAuthorization,
+    fetchFromHealthKit,
+    lastSyncTime: healthKitLastSync,
+    isSyncing: isHealthKitSyncing,
+    localHealthData,
+    cloudHealthData,
+  } = useHealthKit();
   const [waterIntake, setWaterIntake] = useState(0);
   const [weight, setWeight] = useState('');
   const [scaleConnected, setScaleConnected] = useState(false);
@@ -664,10 +676,131 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Health App Integration Section */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLine} />
+          <Text style={styles.sectionTitle}>HEALTH INTEGRATION</Text>
+          <View style={styles.sectionLine} />
+        </View>
+
+        {/* Health App Connection Card */}
+        <View style={styles.trackingCard}>
+          <LinearGradient
+            colors={['rgba(255,69,58,0.05)', 'rgba(0,0,0,0.95)']}
+            style={styles.trackingGradient}
+          >
+            <View style={styles.trackingHeader}>
+              <Smartphone size={20} color="#FF453A" />
+              <Text style={styles.trackingTitle}>
+                {Platform.OS === 'ios' ? 'APPLE HEALTH' : 'GOOGLE FIT'}
+              </Text>
+              <View style={styles.syncStatusContainer}>
+                {isHealthKitAuthorized ? (
+                  <>
+                    <CheckCircle size={14} color="#00FF00" />
+                    <Text style={[styles.trackingStatus, { color: '#00FF00' }]}>CONNECTED</Text>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={14} color="#FF453A" />
+                    <Text style={[styles.trackingStatus, { color: '#FF453A' }]}>DISCONNECTED</Text>
+                  </>
+                )}
+              </View>
+            </View>
+            
+            {!isHealthKitAuthorized ? (
+              <View style={styles.healthConnectSection}>
+                <Text style={styles.healthConnectDescription}>
+                  Connect your health app to automatically track sleep, steps, heart rate, and more biometric data.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.healthConnectButton}
+                  onPress={requestAuthorization}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['#FF453A', '#FF6B6B']}
+                    style={styles.healthConnectGradient}
+                  >
+                    <Link2 size={20} color="#FFFFFF" />
+                    <Text style={styles.healthConnectText}>
+                      CONNECT {Platform.OS === 'ios' ? 'APPLE HEALTH' : 'GOOGLE FIT'}
+                    </Text>
+                    <ChevronRight size={16} color="#FFFFFF" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.healthConnectedSection}>
+                <View style={styles.healthDataGrid}>
+                  <View style={styles.healthDataItem}>
+                    <Moon size={16} color="#8A2BE2" />
+                    <Text style={styles.healthDataValue}>
+                      {localHealthData?.sleepHours || cloudHealthData?.sleepHours || '--'}
+                    </Text>
+                    <Text style={styles.healthDataLabel}>SLEEP HRS</Text>
+                  </View>
+                  <View style={styles.healthDataDivider} />
+                  <View style={styles.healthDataItem}>
+                    <Activity size={16} color="#00FF00" />
+                    <Text style={styles.healthDataValue}>
+                      {localHealthData?.steps || cloudHealthData?.steps || '--'}
+                    </Text>
+                    <Text style={styles.healthDataLabel}>STEPS</Text>
+                  </View>
+                  <View style={styles.healthDataDivider} />
+                  <View style={styles.healthDataItem}>
+                    <Heart size={16} color="#E91E63" />
+                    <Text style={styles.healthDataValue}>
+                      {localHealthData?.heartRate || cloudHealthData?.heartRate || '--'}
+                    </Text>
+                    <Text style={styles.healthDataLabel}>BPM</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.healthActions}>
+                  <TouchableOpacity 
+                    style={styles.healthSyncButton}
+                    onPress={fetchFromHealthKit}
+                    disabled={isHealthKitSyncing}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={isHealthKitSyncing ? ['#666', '#444'] : ['#FF453A', '#FF6B6B']}
+                      style={styles.healthSyncGradient}
+                    >
+                      <Activity size={16} color="#FFFFFF" />
+                      <Text style={styles.healthSyncText}>
+                        {isHealthKitSyncing ? 'SYNCING...' : 'SYNC NOW'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.healthSettingsButton}
+                    onPress={() => router.push('/health-sync')}
+                    activeOpacity={0.7}
+                  >
+                    <Settings size={16} color="#FF453A" />
+                    <Text style={styles.healthSettingsText}>SETTINGS</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {healthKitLastSync && (
+                  <Text style={styles.healthLastSync}>
+                    Last sync: {new Date(healthKitLastSync).toLocaleTimeString()}
+                  </Text>
+                )}
+              </View>
+            )}
+          </LinearGradient>
+        </View>
+
         {/* Data Input Section */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLine} />
-          <Text style={styles.sectionTitle}>BIOMETRIC INPUT</Text>
+          <Text style={styles.sectionTitle}>MANUAL INPUT</Text>
           <View style={styles.sectionLine} />
         </View>
 
@@ -864,7 +997,9 @@ export default function DashboardScreen() {
               style={styles.statGradient}
             >
               <Moon size={18} color="#8A2BE2" />
-              <Text style={styles.statValue}>{clientData?.dailyMetrics?.sleep || 0}</Text>
+              <Text style={styles.statValue}>
+                {localHealthData?.sleepHours || cloudHealthData?.sleepHours || clientData?.dailyMetrics?.sleep || 0}
+              </Text>
               <Text style={styles.statLabel}>SLEEP HRS</Text>
             </LinearGradient>
           </View>
@@ -1820,5 +1955,117 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     letterSpacing: 1,
     fontWeight: '300',
+  },
+  healthConnectSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  healthConnectDescription: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  healthConnectButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 0,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,69,58,0.3)',
+  },
+  healthConnectGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  healthConnectText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  healthConnectedSection: {
+    paddingVertical: 10,
+  },
+  healthDataGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,69,58,0.1)',
+    backgroundColor: 'rgba(255,69,58,0.02)',
+  },
+  healthDataItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  healthDataValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  healthDataLabel: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    fontWeight: '300',
+  },
+  healthDataDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,69,58,0.2)',
+  },
+  healthActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 15,
+  },
+  healthSyncButton: {
+    flex: 2,
+    height: 40,
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  healthSyncGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  healthSyncText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  healthSettingsButton: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(255,69,58,0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  healthSettingsText: {
+    fontSize: 11,
+    color: '#FF453A',
+    fontWeight: '300',
+    letterSpacing: 1,
+  },
+  healthLastSync: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
 });

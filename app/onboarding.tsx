@@ -9,17 +9,20 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, User, Target, Activity, Clock, Utensils, Droplets, Moon, TrendingUp } from 'lucide-react-native';
+import { ChevronRight, User, Target, Activity, Clock, Utensils, Droplets, Moon, TrendingUp, Smartphone, Link2 } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/providers/AuthProvider';
+import { useHealthKit } from '@/providers/HealthKitProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OnboardingScreen() {
   const { completeOnboarding } = useAuth();
+  const { isHealthKitAvailable, isAuthorized, requestAuthorization } = useHealthKit();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,7 +58,7 @@ export default function OnboardingScreen() {
   const submitIntake = trpc.oxford.submitIntake.useMutation();
 
   const handleNext = async () => {
-    if (step < 6) {
+    if (step < 7) {
       setStep(step + 1);
     } else {
       // Submit intake form
@@ -482,6 +485,76 @@ export default function OnboardingScreen() {
           </View>
         );
       
+      case 7:
+        return (
+          <View style={styles.stepContent}>
+            <Smartphone size={48} color="#FFD700" />
+            <Text style={styles.stepTitle}>Health App Integration</Text>
+            <Text style={styles.stepDescription}>
+              Connect your health app to automatically track sleep, steps, and other vital metrics
+            </Text>
+            
+            <View style={styles.healthIntegrationContainer}>
+              <View style={styles.healthBenefits}>
+                <View style={styles.benefitItem}>
+                  <Moon size={20} color="#8A2BE2" />
+                  <Text style={styles.benefitText}>Automatic sleep tracking</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <Activity size={20} color="#00FF00" />
+                  <Text style={styles.benefitText}>Daily step counting</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <TrendingUp size={20} color="#FF00FF" />
+                  <Text style={styles.benefitText}>Heart rate monitoring</Text>
+                </View>
+              </View>
+              
+              {Platform.OS === 'ios' && isHealthKitAvailable ? (
+                !isAuthorized ? (
+                  <TouchableOpacity 
+                    style={styles.healthConnectButton}
+                    onPress={requestAuthorization}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={['#FF453A', '#FF6B6B']}
+                      style={styles.healthConnectGradient}
+                    >
+                      <Link2 size={20} color="#FFFFFF" />
+                      <Text style={styles.healthConnectButtonText}>Connect Apple Health</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.healthConnectedContainer}>
+                    <View style={styles.healthConnectedIcon}>
+                      <Smartphone size={24} color="#00FF00" />
+                    </View>
+                    <Text style={styles.healthConnectedText}>Apple Health Connected!</Text>
+                    <Text style={styles.healthConnectedSubtext}>
+                      Your sleep and activity data will sync automatically
+                    </Text>
+                  </View>
+                )
+              ) : (
+                <View style={styles.healthUnavailableContainer}>
+                  <Text style={styles.healthUnavailableText}>
+                    Health app integration will be available after setup
+                  </Text>
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={styles.skipHealthButton}
+                onPress={() => setStep(step + 1)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipHealthText}>Skip for now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      
       default:
         return null;
     }
@@ -501,7 +574,7 @@ export default function OnboardingScreen() {
 
         {/* Progress Indicator */}
         <View style={styles.progressContainer}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
             <View
               key={i}
               style={[
@@ -541,7 +614,7 @@ export default function OnboardingScreen() {
               ) : (
                 <>
                   <Text style={styles.nextButtonText}>
-                    {step === 6 ? 'Complete Setup' : 'Next'}
+                    {step === 7 ? 'Complete Setup' : 'Next'}
                   </Text>
                   <ChevronRight size={20} color="#001F3F" />
                 </>
@@ -790,5 +863,93 @@ const styles = StyleSheet.create({
   stressButtonTextActive: {
     color: '#001F3F',
     fontWeight: '600',
+  },
+  healthIntegrationContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  healthBenefits: {
+    width: '100%',
+    marginBottom: 30,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  benefitText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  healthConnectButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  healthConnectGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  healthConnectButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  healthConnectedContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0,255,0,0.1)',
+    borderRadius: 10,
+    marginBottom: 20,
+    width: '100%',
+  },
+  healthConnectedIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,255,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  healthConnectedText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#00AA00',
+    marginBottom: 8,
+  },
+  healthConnectedSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  healthUnavailableContainer: {
+    padding: 20,
+    backgroundColor: 'rgba(255,165,0,0.1)',
+    borderRadius: 10,
+    marginBottom: 20,
+    width: '100%',
+  },
+  healthUnavailableText: {
+    fontSize: 14,
+    color: '#FF8C00',
+    textAlign: 'center',
+  },
+  skipHealthButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  skipHealthText: {
+    fontSize: 14,
+    color: '#999',
+    textDecorationLine: 'underline',
   },
 });
